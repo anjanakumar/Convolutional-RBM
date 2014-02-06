@@ -22,11 +22,11 @@ public class CRBM {
     
     private final Random    RANDOM = new Random();
     
-    private final String    PATH = "Data/Edges";
+    private final String    PATH = "Data/Edge";
     
-    private final int       EDGELENGTH    = 28;
+    private final int       EDGELENGTH  = 28;
     private final boolean   ISRGB       = false;
-    private final boolean   BINARIZE      = true;
+    private final boolean   BINARIZE    = true;
     private final boolean   INVERT      = true;
     private final float     MINDATA     = 0.0f;
     private final float     MAXDATA     = 1.0f;
@@ -35,10 +35,8 @@ public class CRBM {
     private final int       K           = 10;
     private final int       FILTEREDGELENGTH = 3;
     
-    private final float     INITIALWEIGHTSSCALAR = 0.01f;
+    private final float     INITIALWEIGHTSSCALAR = 1f;
     private final float     LEARNINGRATE = 0.1f;
-    
-    
 
     /**
      * @param args the command line arguments
@@ -62,7 +60,7 @@ public class CRBM {
         
         for(int k = 0; k < K; k++) {
             for(int i = 0; i < filterDimensions; i++) {
-                W_k[k][i] = (float)(INITIALWEIGHTSSCALAR * RANDOM.nextDouble());
+                W_k[k][i] = (float)(INITIALWEIGHTSSCALAR * ((RANDOM.nextDouble() - 0.5) * 2) / (FILTEREDGELENGTH * FILTEREDGELENGTH));
             }
         }
         
@@ -79,19 +77,20 @@ public class CRBM {
                         H0_k[k][i] = bernoulli(PH0_k[k][i]);
                     }
                 }
-
+                
+                exportAsImage(Grad0_k, "Grad0_k");
+                
                 W_kFlipped = flip(W_k);
                 
                 float[][] V1m = new float[data.length][(EDGELENGTH-offset*2)*(EDGELENGTH-offset*2)];
                 for(int i = 0; i < data.length; i++) {
                     for(int k = 0; k < K; k++) {
-                        float[] r = filter(H0_k[k][i], W_kFlipped[k], EDGELENGTH-offset, FILTEREDGELENGTH);
+                        float[] r = filter(PH0_k[k][i], W_kFlipped[k], EDGELENGTH-offset, FILTEREDGELENGTH);
                         add(V1m[i], r);
                     }
                 }
 
                 float[][] V1 = new float[data.length][];
-                
                 for(int i = 0; i < data.length; i++) {
                     V1[i] = concat(data[i], logistic(V1m[i]));
                 }
@@ -108,6 +107,7 @@ public class CRBM {
                     }
                 }
             
+                print(W_k);
         }
         
         exportAsImage(PH0_k, "PH0_k");
@@ -125,6 +125,11 @@ public class CRBM {
         final int rEdgeLength = iEdgeLength-offset;
         
         float[] r = new float[rEdgeLength*rEdgeLength];
+        
+        float sumH = 0f;
+        for(int i = 0; i < H.length; i++) {
+            sumH += Math.abs(H[i]);
+        }
                 
         for(int y = 0; y < rEdgeLength; y++) {
             for(int x = 0; x < rEdgeLength; x++) {
@@ -135,12 +140,11 @@ public class CRBM {
                     for(int xh = 0; xh < hEdgeLength; xh++) {
                         int pos = (y + yh) * iEdgeLength + x + xh;
                         sum += I[pos] * H[yh * hEdgeLength + xh];
-                        sumA+= H[yh * hEdgeLength + xh];
                     }
                 }
 
                 int dest = y * rEdgeLength + x;
-                r[dest] = sum / sumA;
+                r[dest] = (sum / sumH);
             }    
         }
         
@@ -273,7 +277,7 @@ public class CRBM {
             System.out.println("K:" + k);
             for (int i = 0; i < FILTEREDGELENGTH; i++) {
                 for (int j = 0; j < FILTEREDGELENGTH; j++) {
-                    System.out.print(W_k[i][j] + " ");
+                    System.out.print(W_k[k][i * FILTEREDGELENGTH + j] + " ");
                 }
                 System.out.println();
             }
