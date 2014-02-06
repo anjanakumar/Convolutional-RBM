@@ -22,7 +22,7 @@ public class CRBM {
     
     private final Random    RANDOM = new Random();
     
-    private final String    PATH = "Data/MNIST_Small";
+    private final String    PATH = "Data/Edges";
     
     private final int       EDGELENGTH    = 28;
     private final boolean   ISRGB       = false;
@@ -31,7 +31,8 @@ public class CRBM {
     private final float     MINDATA     = 0.0f;
     private final float     MAXDATA     = 1.0f;
     
-    private final int       K           = 100;
+    private final int       EPOCHS      = 100;
+    private final int       K           = 10;
     private final int       FILTEREDGELENGTH = 3;
     
     private final float     INITIALWEIGHTSSCALAR = 0.01f;
@@ -48,7 +49,7 @@ public class CRBM {
     
     public CRBM() {
         float[][] data = loadData();
-        train(data, 10);
+        train(data, EPOCHS);
     }
     
     private void train(float[][] data, int epochs) {
@@ -61,49 +62,58 @@ public class CRBM {
         
         for(int k = 0; k < K; k++) {
             for(int i = 0; i < filterDimensions; i++) {
-                W_k[k][i] = (float)(INITIALWEIGHTSSCALAR * RANDOM.nextGaussian());
+                W_k[k][i] = (float)(INITIALWEIGHTSSCALAR * RANDOM.nextDouble());
             }
         }
         
-        float[][] PH0_k = new float[K][];
-        float[][] Grad0_k = new float[K][];
-        float[][] H0_k = new float[K][];
+        float[][][] PH0_k = new float[K][data.length][];
+        float[][][] Grad0_k = new float[K][data.length][];
+        float[][][] H0_k = new float[K][data.length][];
         
         for(int e = 0; e < epochs; e++) {
-            
-            for(int i = 0; i < data.length; i++) {
-                float[] V0 = data[i];
                 
                 for(int k = 0; k < K; k++) {
-                    PH0_k[k] = logistic(filter(V0, W_k[k]));
-                    Grad0_k[k] = filter(V0, PH0_k[k], EDGELENGTH, EDGELENGTH-offset);
-                    H0_k[k] = bernoulli(PH0_k[k]);
+                    for(int i = 0; i < data.length; i++) {
+                        PH0_k[k][i] = logistic(filter(data[i], W_k[k]));
+                        Grad0_k[k][i] = filter(data[i], PH0_k[k][i], EDGELENGTH, EDGELENGTH-offset);
+                        H0_k[k][i] = bernoulli(PH0_k[k][i]);
+                    }
                 }
 
                 W_kFlipped = flip(W_k);
-
-                float[] V1m = new float[(EDGELENGTH-offset*2)*(EDGELENGTH-offset*2)];
-                for(int k = 0; k < K; k++) {
-                    float[] r = filter(H0_k[k], W_kFlipped[k], EDGELENGTH-offset, FILTEREDGELENGTH);
-                    add(V1m, r);
+                
+                float[][] V1m = new float[data.length][(EDGELENGTH-offset*2)*(EDGELENGTH-offset*2)];
+                for(int i = 0; i < data.length; i++) {
+                    for(int k = 0; k < K; k++) {
+                        float[] r = filter(H0_k[k][i], W_kFlipped[k], EDGELENGTH-offset, FILTEREDGELENGTH);
+                        add(V1m[i], r);
+                    }
                 }
 
-                float[] V1 = concat(V0, logistic(V1m));
+                float[][] V1 = new float[data.length][];
+                
+                for(int i = 0; i < data.length; i++) {
+                    V1[i] = concat(data[i], logistic(V1m[i]));
+                }
 
-                float[][] PH1_k = new float[K][];
-                float[][] Grad1_k = new float[K][];
+                float[][][] PH1_k = new float[K][data.length][];
+                float[][][] Grad1_k = new float[K][data.length][];
 
                 for(int k = 0; k < K; k++) {
-                    PH1_k[k] = logistic(filter(V1, W_k[k]));
-                    Grad1_k[k] = filter(V1, PH1_k[k], EDGELENGTH, EDGELENGTH-offset);
-                    CD(W_k[k], Grad0_k[k], Grad1_k[k]);
+                    for(int i = 0; i < data.length; i++) {
+                        PH1_k[k][i] = logistic(filter(V1[i], W_k[k]));
+                        Grad1_k[k][i] = filter(V1[i], PH1_k[k][i], EDGELENGTH, EDGELENGTH-offset);
+                        
+                        CD(W_k[k], Grad0_k[k][i], Grad1_k[k][i]);
+                    }
                 }
-            }
             
         }
         
         exportAsImage(PH0_k, "PH0_k");
         exportAsImage(H0_k, "H0_k");
+        
+        print(W_k);
     }
      private float[] filter(float[] I, float[] H) {
          return filter(I, H, EDGELENGTH, FILTEREDGELENGTH);
@@ -120,15 +130,17 @@ public class CRBM {
             for(int x = 0; x < rEdgeLength; x++) {
 
                 float sum = 0;
+                float sumA = 0.0f;
                 for(int yh = 0; yh < hEdgeLength; yh++) {
                     for(int xh = 0; xh < hEdgeLength; xh++) {
                         int pos = (y + yh) * iEdgeLength + x + xh;
                         sum += I[pos] * H[yh * hEdgeLength + xh];
+                        sumA+= H[yh * hEdgeLength + xh];
                     }
                 }
 
                 int dest = y * rEdgeLength + x;
-                r[dest] = sum;
+                r[dest] = sum / sumA;
             }    
         }
         
@@ -239,17 +251,35 @@ public class CRBM {
         
     }
 
-    private void exportAsImage(float[][] data, String name) {
+    private void exportAsImage(float[][][] data, String name) {
         for(int k = 0; k < data.length; k++) {
-            BufferedImage image = DataConverter.pixelDataToImage(data[k], 0.0f, false);
-            new File("Data/Export/" + name).mkdirs();
-            File outputfile = new File("Data/Export/" + name + "/" + k + ".jpg");
-            try {
-                ImageIO.write(image, "jpg", outputfile);
-            } catch (IOException ex) {
-                Logger.getLogger(CRBM.class.getName()).log(Level.SEVERE, null, ex);
+            for(int i = 0; i < data[0].length; i++) {
+
+                BufferedImage image = DataConverter.pixelDataToImage(data[k][i], 0.0f, false);
+                new File("Data/Export/" + name).mkdirs();
+                File outputfile = new File("Data/Export/" + name + "/" + k + "_" + i + ".jpg");
+                try {
+                    ImageIO.write(image, "jpg", outputfile);
+                } catch (IOException ex) {
+                    Logger.getLogger(CRBM.class.getName()).log(Level.SEVERE, null, ex);
+                }
             }
         }
+    }
+
+    private void print(float[][] W_k) {
+        
+        for (int k = 0; k < K; k++) {
+            System.out.println("K:" + k);
+            for (int i = 0; i < FILTEREDGELENGTH; i++) {
+                for (int j = 0; j < FILTEREDGELENGTH; j++) {
+                    System.out.print(W_k[i][j] + " ");
+                }
+                System.out.println();
+            }
+            System.out.println();
+        }
+        
     }
 
 }
