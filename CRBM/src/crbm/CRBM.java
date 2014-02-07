@@ -26,7 +26,8 @@ public class CRBM {
 
     private final Random RANDOM = new Random();
 
-    private final String PATH = "Data/MNIST_Small";
+    private final String EXPORT_PATH = "export";
+    private final String IMPORT_PATH = "Data/MNIST_Small";
 
     private final int EDGELENGTH = 28;
     private final boolean ISRGB = false;
@@ -57,7 +58,7 @@ public class CRBM {
 
     private void train(float[][] data) {
         try {
-            FileUtils.deleteDirectory(new File("/Users/Radek/export"));
+            FileUtils.deleteDirectory(new File(EXPORT_PATH));
         } catch (IOException ex) {
             Logger.getLogger(CRBM.class.getName()).log(Level.SEVERE, null, ex);
         }
@@ -78,19 +79,6 @@ public class CRBM {
             for (int i = 0; i < data.length; i++) {
                 trainImage(data[i], W_k, i, print);
             }
-        }
-        
-        for(int k = 0; k < K; k++) {
-            BufferedImage filterImage = DataConverter.pixelDataToImage(W_k[k], 0.5f, false);
-            
-            new File("/Users/Radek/export/Filters").mkdirs();
-            File outputfile = new File("/Users/Radek/export/Filters/" + k + ".png");
-            try {
-                ImageIO.write(filterImage, "png", outputfile);
-            } catch (IOException ex) {
-                Logger.getLogger(CRBM.class.getName()).log(Level.SEVERE, null, ex);
-            }
-            
         }
     }
 
@@ -140,9 +128,9 @@ public class CRBM {
             print(W_k);
             exportAsImage(PH0_k, "PH0_k", count);
             exportAsImage(PH1_k, "PH1_k", count);
-            exportAsImage(H0_k, PATH, count);
-            exportAsImage(data, "Data", count);
-            exportAsImage(V1, "Reconstruction", count);
+            exportAsImage(H0_k, "H0_k", count);
+            exportAsImage(data, "data", count);
+            exportAsImage(V1, "recon", count);
         }
     }
 
@@ -182,7 +170,7 @@ public class CRBM {
 
     public float[][] loadData() {
 
-        File imageFolder = new File(PATH);
+        File imageFolder = new File(IMPORT_PATH);
         final File[] imageFiles = imageFolder.listFiles(new FilenameFilter() {
             @Override
             public boolean accept(File dir, String name) {
@@ -290,26 +278,21 @@ public class CRBM {
         return result;
     }
 
-    private void exportAsImage(float[][] data, String name, int count) {
-        try {            
-            new File("/Users/Radek/export/" + name + "/").mkdirs();
-            
-            for (int k = 0; k < data.length; k++) {
-                BufferedImage image = DataConverter.pixelDataToImage(data[k], 0.0f, false);
-                File outputfile = new File("/Users/Radek/export/" + name + "/" + count + "_" + k + ".png");
-
-                ImageIO.write(image, "png", outputfile);
-            }
-        } catch (IOException ex) {
-            Logger.getLogger(CRBM.class.getName()).log(Level.SEVERE, null, ex);
-        }
+    private void exportAsImage(float[][] data, String name, int count) {     
+        for (int k = 0; k < data.length; k++) {
+            exportAsImage(data[k], name, count, k);
+        }      
     }
     
-    private void exportAsImage(float[] data, String name, int count) {
-        new File("/Users/Radek/export/" + name + "/").mkdirs();
+    private void exportAsImage(float[] data, String name, int count){
+        exportAsImage(data, name, count, 0);
+    }
+    
+    private void exportAsImage(float[] data, String name, int count, int k) {
+        new File(EXPORT_PATH + "/" + name + "/").mkdirs();
         
         BufferedImage image = DataConverter.pixelDataToImage(data, 0.0f, false);
-        File outputfile = new File("/Users/Radek/export/" + name + "/" + count + ".png");
+        File outputfile = new File(EXPORT_PATH + "/" + name + "/" + count + "_" + k + ".png");
         try {
             ImageIO.write(image, "png", outputfile);
         } catch (IOException ex) {
