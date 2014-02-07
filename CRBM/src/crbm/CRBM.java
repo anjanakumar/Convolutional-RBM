@@ -26,7 +26,7 @@ public class CRBM {
 
     private final Random RANDOM = new Random();
 
-    private final String PATH = "Data/Trans";
+    private final String PATH = "Data/MNIST_Small";
 
     private final int EDGELENGTH = 28;
     private final boolean ISRGB = false;

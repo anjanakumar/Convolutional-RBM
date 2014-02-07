@@ -157,15 +157,9 @@ public class DataConverter {
 		
 		int[] rgb = new int[data.length];
         for (int i = 0; i < rgb.length; i++) {
-        	float dataShiftet = (data[i] + Math.abs(minData));
-        	if(dataShiftet < 0) {
-        		rgb[i] = 0xFFFF0000;
-        	} else if(dataShiftet > 1) {
-        		rgb[i] = 0xFF00FF00;
-        	} else {
-        		int value = (int)(dataShiftet * 255);
-        		rgb[i] = (0xFF << 24) | (value << 16) | (value << 8) | value;
-        	}
+            int value = (int)(data[i] * 255);
+            rgb[i] = (0xFF << 24) | (value << 16) | (value << 8) | value;
+
         }
 		
         image.setRGB(0, 0, edgeLength, edgeLength, rgb, 0, edgeLength);
