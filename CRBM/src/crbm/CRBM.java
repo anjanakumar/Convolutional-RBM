@@ -24,6 +24,7 @@ public class CRBM {
 
     private final Random RANDOM = new Random();
 
+    private final String FILEPATH = "export";
     private final String PATH = "Data/MNIST_Small";
 
     private final int EDGELENGTH = 28;
@@ -33,12 +34,14 @@ public class CRBM {
     private final float MINDATA = 0.0f;
     private final float MAXDATA = 1.0f;
 
-    private final int EPOCHS = 100;
-    private final int K = 15;
-    private final int FILTEREDGELENGTH = 5;
+    private final int EPOCHS = 10000;
+    private final int K = 3;
+    private final int FILTEREDGELENGTH = 3;
 
     private final float INITIALWEIGHTSSCALAR = 1f;
     private final float LEARNINGRATE = 0.01f;
+    
+    private final int POOLING_SIZE = 2;
 
     /**
      * @param args the command line arguments
@@ -95,7 +98,12 @@ public class CRBM {
             H0_k[k] = bernoulli(PH0_k[k]);
         }
         
-        //H0_k = maxPooling(H0_k, 2);
+        /*
+        float[][] max = maxPooling(H0_k, POOLING_SIZE);
+        for (int k = 0; k < K; k++) {
+            H0_k[k] = mul(H0_k[k], max[k]);
+        }
+        */
 
         W_kFlipped = flip(W_k);
 
@@ -264,11 +272,11 @@ public class CRBM {
 
     private void exportAsImage(float[][] data, String name, int count) {
         try {            
-            new File("/Users/Radek/export/" + name + "/").mkdirs();
+            new File(FILEPATH + "/" + name + "/").mkdirs();
             
             for (int k = 0; k < data.length; k++) {
                 BufferedImage image = DataConverter.pixelDataToImage(data[k], 0.0f, false);
-                File outputfile = new File("/Users/Radek/export/" + name + "/" + count + "_" + k + ".png");
+                File outputfile = new File(FILEPATH + "/" + name + "/" + count + "_" + k + ".png");
 
                 ImageIO.write(image, "png", outputfile);
             }
