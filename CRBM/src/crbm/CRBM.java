@@ -5,6 +5,7 @@
  */
 package crbm;
 
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.util.Random;
@@ -14,6 +15,8 @@ import java.util.logging.Logger;
 import org.apache.commons.io.FileUtils;
 import org.jblas.FloatMatrix;
 import org.jblas.MatrixFunctions;
+
+import javax.imageio.ImageIO;
 
 /**
  *
@@ -79,11 +82,11 @@ public class CRBM {
 
         float[] V1m = new float[(dataEdgeLength - offset * 2) * (dataEdgeLength - offset * 2)];
         for (int k = 0; k < K; k++) {
-            float[] r = filter(PH0_k[k], W1[k], dataEdgeLength - offset, this.filterEdgeLength);
+            float[] r = filter(H0_k[k], W1[k], dataEdgeLength - offset, this.filterEdgeLength);
             V1m = add(V1m, r);
         }
 
-        float[] V1 = concat(data, logistic(V1m), dataEdgeLength, filterEdgeLength);
+        float[] V1 = concat(data, getVisible(H0_k, data, dataEdgeLength), dataEdgeLength, filterEdgeLength);
 
         float[][] PH1_k = new float[K][];
         float[][] Grad1_k = new float[K][];
@@ -97,16 +100,9 @@ public class CRBM {
         FloatMatrix V0M = new FloatMatrix(data);
         FloatMatrix V1M = new FloatMatrix(V1);
 
-        return (float)Math.sqrt(MatrixFunctions.pow(V0M.sub(V1M), 2.0f).sum());
+        exportAsImage(V1, "bla", 0);
 
-//        if(print) {
-//            print(W);
-//            exportAsImage(PH0_k, "PH0_k", count);
-//            exportAsImage(PH1_k, "PH1_k", count);
-//            exportAsImage(H0_k, "H0_k", count);
-//            exportAsImage(data, "data", count);
-//            exportAsImage(V1, "recon", count);
-//        }
+        return (float)Math.sqrt(MatrixFunctions.pow(V0M.sub(V1M), 2.0f).sum());
     }
 
     private float[] filter(float[] data, float[] filter, int dataEdgeLength, int filterEdgeLength) {
@@ -232,6 +228,36 @@ public class CRBM {
         }
         return H0_k;
     }
+
+    public float[][] getVisible(float[][][] data, float[] original, int dataEdgeLength) {
+        float[][] result = new float[data.length][];
+
+        for(int i = 0; i < data.length; i++) {
+            result[i] = getVisible(data[i], original, dataEdgeLength);
+        }
+
+        return result;
+    }
+
+    public float[] getVisible(float[][] data, float[] original, int dataEdgeLength) {
+        if(original == null) {
+            original = new float[dataEdgeLength*dataEdgeLength];
+        }
+
+        float[][] W1 = flip(W);
+        int offset = filterEdgeLength - 1;
+
+        float[] V1m = new float[(dataEdgeLength - offset * 2) * (dataEdgeLength - offset * 2)];
+        for (int k = 0; k < W1.length; k++) {
+            float[] r = filter(data[k], W1[k], dataEdgeLength - offset, this.filterEdgeLength);
+            V1m = add(V1m, r);
+        }
+
+        //float[] V1 = concat(original, logistic(V1m), dataEdgeLength, filterEdgeLength);
+
+        return logistic(V1m);
+    }
+
 //    private void exportAsImage(float[][] data, String name, int count) {
 //        for (int k = 0; k < data.length; k++) {
 //            exportAsImage(data[k], name, count, k);
@@ -268,5 +294,34 @@ public class CRBM {
 //        }
 //
 //    }
+
+    private void exportAsImage(float[][] data, String name) {
+
+        String exportPath = "export";
+
+        try {
+            FileUtils.deleteDirectory(new File(exportPath));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        for(int i = 0; i < data.length; i++) {
+            exportAsImage(data[i], name, i);
+        }
+    }
+
+    private void exportAsImage(float[] data, String name, int count) {
+        String exportPath = "export";
+
+        new File(exportPath + "/" + name + "/").mkdirs();
+
+        BufferedImage image = DataConverter.pixelDataToImage(data, 0.0f, false);
+        File outputfile = new File(exportPath + "/" + name + "/" + count + ".png");
+        try {
+            ImageIO.write(image, "png", outputfile);
+        } catch (IOException ex) {
+            ex.printStackTrace();
+        }
+    }
 
 }

@@ -1,4 +1,5 @@
 *.class
+*.iml
 CRBM/nbproject
 CRBM/build.xml
 CRBM/manifest.mf

@@ -13,11 +13,11 @@ import java.io.File;
  */
 public class Trainer {
 
-    private int K = 10;
+    private int K = 15;
     private float learningRate = 0.01f;
-    private int epochs = 100;
+    private int epochs = 10;
 
-    private int crbm1FilterEdgeLength = 3;
+    private int crbm1FilterEdgeLength = 5;
     private int crbm1DataEdgeLength = 28;
     private int crbm1PoolingSize = 2;
 
@@ -31,22 +31,88 @@ public class Trainer {
     }
 
     public void train() {
+        String exportPath = "export";
+        try {
+            FileUtils.deleteDirectory(new File(exportPath));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
         float[][] data = Main.loadData();
 
         CRBM crbm1 = new CRBM(K, crbm1FilterEdgeLength);
         crbm1.train(data, crbm1DataEdgeLength, epochs, learningRate, "First-RBM");
+
         float[][][] hidden1 = crbm1.getHidden(data, crbm1DataEdgeLength);
-        float[][] maxPooled = maxPooling(hidden1, crbm1PoolingSize, crbm1DataEdgeLength, crbm1FilterEdgeLength);
+
+        float[][][] maxPooled1 = maxPooling(hidden1, crbm1PoolingSize, crbm1DataEdgeLength, crbm1FilterEdgeLength);
+
+
+        float[][] visibleTest = crbm1.getVisible(hidden1, null, crbm1DataEdgeLength);
+        exportAsImage(visibleTest, "visible1");
+        exportAsImage(reduceDimension(expandDimension(visibleTest, data.length)), "visible2");
 
         int crbm2DataEdgeLength = maxPoolEdgeCalc(crbm1PoolingSize, crbm1DataEdgeLength, crbm1FilterEdgeLength);
-
         CRBM crbm2 = new CRBM(K, crbm2FilterEdgeLength);
-        crbm2.train(maxPooled, crbm2DataEdgeLength, epochs, learningRate, "Second-RBM");
-        float[][][] hidden2 = crbm2.getHidden(data, crbm2DataEdgeLength);
-        float[][] maxPooled2 = maxPooling(hidden2, crbm2PoolingSize, crbm2DataEdgeLength, crbm2FilterEdgeLength);
+        crbm2.train(reduceDimension(maxPooled1), crbm2DataEdgeLength, epochs, learningRate, "Second-RBM");
 
-        exportAsImage(maxPooled2, "maxPooled2");
+        float[][][] hidden2 = crbm2.getHidden(reduceDimension(maxPooled1), crbm2DataEdgeLength);
 
+        int crbm2FilterOffset =  (crbm2FilterEdgeLength - 1) * 2;
+        float[][] visible2 = crbm2.getVisible(hidden2, null, crbm2DataEdgeLength);
+
+        float[][][] nn = nearestNeighbour(expandDimension(visible2, K), crbm2DataEdgeLength - crbm2FilterOffset, crbm2DataEdgeLength - crbm2FilterOffset, (crbm2DataEdgeLength - crbm2FilterOffset) * crbm1PoolingSize, (crbm2DataEdgeLength - crbm2FilterOffset) * crbm1PoolingSize);
+
+        int crbm1FilterOffset = crbm1FilterEdgeLength - 1;
+        float[][] visible = crbm1.getVisible(nn, null, (crbm2DataEdgeLength - crbm2FilterOffset) * crbm1PoolingSize - crbm1FilterOffset);
+
+        //float[][][] maxPooled2 = maxPooling(hidden2, crbm2PoolingSize, crbm2DataEdgeLength, crbm2FilterEdgeLength);
+
+        exportAsImage(visible, "visible");
+
+    }
+
+    float[][][] expandDimension(float[][] data, int nextDimensionSize) {
+        float[][][] result = new float[data.length / nextDimensionSize][nextDimensionSize][data[0].length];
+
+        for(int i = 0; i < result.length; i++) {
+            for(int j = 0; j < result[0].length; j++) {
+                for(int k = 0; k < result[0][0].length; k++) {
+                    result[i][j][k] = data[i * result[0].length + j][k];
+                }
+            }
+        }
+        return result;
+    }
+
+    float[][] reduceDimension(float[][][] data) {
+        float[][] result = new float[data.length * data[0].length][];
+
+        for(int i = 0; i < data.length; i++) {
+            for(int j = 0; j < data[0].length; j++){
+                result[i * data[0].length + j] = data[i][j];
+            }
+        }
+        return result;
+    }
+
+    public float[][][] nearestNeighbour(float[][][] pixels, int actualWidth, int actualHeight, int newWidth, int newHeight) {
+        float[][][] result = new float[pixels.length][pixels[0].length][];
+        for(int i = 0; i < pixels.length; i++) {
+            result[i] = nearestNeighbour(pixels[i], actualWidth, actualHeight, newWidth, newHeight);
+        }
+
+        return result;
+    }
+
+    public float[][] nearestNeighbour(float[][] pixels, int actualWidth, int actualHeight, int newWidth, int newHeight) {
+        float[][] result = new float[pixels.length][];
+
+        for(int i = 0; i < pixels.length; i++) {
+            result[i] = nearestNeighbour(pixels[i], actualWidth, actualHeight, newWidth, newHeight);
+        }
+
+        return result;
     }
 
     public float[] nearestNeighbour(float[] pixels, int actualWidth, int actualHeight, int newWidth, int newHeight) {
@@ -67,18 +133,28 @@ public class Trainer {
         return result;
     }
 
-    private float[][] maxPooling(float[][][] data, int poolingSize, int dataEdgeLength ,int filterEdgeLength) {
-        float[][] result = new float[data.length * K][];
+    private float[][][] maxPooling(float[][][] data, int poolingSize, int dataEdgeLength ,int filterEdgeLength) {
+        float[][][] result = new float[data.length][K][];
 
         for(int i = 0; i < data.length; i++) {
-            float[][] r = maxPooling(data[i], poolingSize, dataEdgeLength , filterEdgeLength);
-            for(int j = 0; j < r.length; j++){
-                result[K * i + j] = r[j];
-            }
+            result[i] = maxPooling(data[i], poolingSize, dataEdgeLength , filterEdgeLength);
         }
 
         return result;
     }
+
+//    private float[][] maxPooling(float[][][] data, int poolingSize, int dataEdgeLength ,int filterEdgeLength) {
+//        float[][] result = new float[data.length * K][];
+//
+//        for(int i = 0; i < data.length; i++) {
+//            float[][] r = maxPooling(data[i], poolingSize, dataEdgeLength , filterEdgeLength);
+//            for(int j = 0; j < r.length; j++){
+//                result[K * i + j] = r[j];
+//            }
+//        }
+//
+//        return result;
+//    }
 
     private int maxPoolEdgeCalc(int poolingSize, int dataEdgeLength, int filterEdgeLength){
 
@@ -141,11 +217,6 @@ public class Trainer {
 
         String exportPath = "export";
 
-        try {
-            FileUtils.deleteDirectory(new File(exportPath));
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
 
         for(int i = 0; i < data.length; i++) {
             exportAsImage(data[i], name, i);
