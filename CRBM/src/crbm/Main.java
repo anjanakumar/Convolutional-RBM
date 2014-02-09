@@ -4,27 +4,24 @@ import javax.imageio.ImageIO;
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Random;
 
 /**
  * Created by Radek on 08.02.14.
  */
 public class Main {
-
-
-    // DATA
-    private static final String IMPORT_PATH = "CRBM/Data/MNIST_Small";
-    private static final int EDGELENGTH = 28;
-    private static final int PADDING = 2;
-    private static final boolean ISRGB = false;
-    private static final boolean BINARIZE = false;
-    private static final boolean INVERT = true;
-    private static final float MINDATA = 0.0f;
-    private static final float MAXDATA = 1.0f;
-
-    private static final float CLUSTER_DISTANCE_FACTOR = 5f;
+    
+    //private static final String importPath = "Data/MNIST_Small";
+    private static final String importPath = "CRBM/Data/MNIST_Small";
+    private static final int edgeLength = 28;
+    private static final int padding = 2;
+    private static final boolean isRGB = false;
+    private static final boolean binarize = false;
+    private static final boolean invert = true;
+    private static final float minData = 0.0f;
+    private static final float maxData = 1.0f;
+    
+    private static final float maxClusterDistance = 20f;
 
     public static void main(String arg[]) {
         Trainer trainer = new Trainer();
@@ -33,7 +30,7 @@ public class Main {
 
     public static float[][] loadData() {
 
-        File imageFolder = new File(IMPORT_PATH);
+        File imageFolder = new File(importPath);
         final File[] imageFiles = imageFolder.listFiles(new FilenameFilter() {
             @Override
             public boolean accept(File dir, String name) {
@@ -41,20 +38,20 @@ public class Main {
             }
         });
 
-        int size = EDGELENGTH * EDGELENGTH;
+        int size = edgeLength * edgeLength;
         float[][] data = new float[imageFiles.length][size];
 
         for (int i = 0; i < imageFiles.length; i++) {
 
             float[] imageData;
             try {
-                imageData = DataConverter.processPixelData(ImageIO.read(imageFiles[i]), EDGELENGTH, BINARIZE, INVERT, MINDATA, MAXDATA, ISRGB);
+                imageData = DataConverter.processPixelData(ImageIO.read(imageFiles[i]), edgeLength, binarize, invert, minData, maxData, isRGB);
             } catch (IOException e) {
                 System.out.println("Could not load: " + imageFiles[i].getAbsolutePath());
                 return null;
             }
 
-            data[i] = pad(imageData, EDGELENGTH, PADDING);
+            data[i] = pad(imageData, edgeLength, padding);
 
         }
 
@@ -86,9 +83,6 @@ public class Main {
         if(data == null || data.length == 0) return null;
         int len = data[0].length;
 
-        // the maxDistance dependends on the data dimensionality
-        float maxDistance = CLUSTER_DISTANCE_FACTOR * len;
-
         Random random = new Random();
         Cluster[] result = new Cluster[1];
         result[0] = new Cluster(data);
@@ -97,7 +91,7 @@ public class Main {
         // add one new cluster in each iteration
         // until the total distance of all data
         // to their cluster centers is small enough
-        while(resultDistance > maxDistance){
+        while(resultDistance > maxClusterDistance){
             // find worst cluster
             float worstTotalDistance = 0;
             int clusterIndex = 0;
@@ -147,5 +141,4 @@ public class Main {
         }
         return result;
     }
-
 }

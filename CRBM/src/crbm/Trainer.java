@@ -13,25 +13,21 @@ import java.io.File;
  */
 public class Trainer {
 
-    private int K = 15;
-    private float learningRate = 0.01f;
-    private int epochs = 100;
+    private final String exportPath = "export";
+    
+    private final int K = 15;
+    private final float learningRate = 0.01f;
+    private final int epochs = 100;
 
-    private int crbmFilterEdgeLength = 5;
+    private final int crbmFilterEdgeLength = 5;
 
-    private int crbm1DataEdgeLength = 32;
-    private int crbm1PoolingSize = 2;
+    private final int crbm1DataEdgeLength = 32;
+    private final int crbm1PoolingSize = 2;
 
-    private int crbm2DataEdgeLength = crbm1DataEdgeLength - crbmFilterEdgeLength + 1;
-    private int crbm2PoolingSize = 2;
-
-
-    public Trainer() {
-
-    }
+    private final int crbm2DataEdgeLength = crbm1DataEdgeLength - crbmFilterEdgeLength + 1;
+    private final int crbm2PoolingSize = 2;
 
     public void train() {
-        String exportPath = "export";
         try {
             FileUtils.deleteDirectory(new File(exportPath));
         } catch (IOException e) {
@@ -39,8 +35,6 @@ public class Trainer {
         }
 
         float[][] data = Main.loadData();
-
-        exportAsImage(data, "test");
 
         CRBM crbm1 = new CRBM(K, crbmFilterEdgeLength);
         crbm1.train(data, crbm1DataEdgeLength, epochs, learningRate, "First-RBM");
@@ -74,18 +68,6 @@ public class Trainer {
         // EXPORT
         exportAsImage(features, "maxPooled2");
         // EXPORT END
-
-
-
-
-
-
-
-
-
-
-
-
 
         CRBM crbm3 = new CRBM(K, crbmFilterEdgeLength);
         crbm3.train(reduceDimension(hidden1), crbm2DataEdgeLength, epochs, learningRate, "Second-RBM");
@@ -175,19 +157,6 @@ public class Trainer {
         return result;
     }
 
-//    private float[][] maxPooling(float[][][] data, int poolingSize, int dataEdgeLength ,int filterEdgeLength) {
-//        float[][] result = new float[data.length * K][];
-//
-//        for(int i = 0; i < data.length; i++) {
-//            float[][] r = maxPooling(data[i], poolingSize, dataEdgeLength , filterEdgeLength);
-//            for(int j = 0; j < r.length; j++){
-//                result[K * i + j] = r[j];
-//            }
-//        }
-//
-//        return result;
-//    }
-
     private int maxPoolEdgeCalc(int poolingSize, int dataEdgeLength, int filterEdgeLength){
 
         int offset = filterEdgeLength-1;
@@ -246,18 +215,12 @@ public class Trainer {
     }
 
     private void exportAsImage(float[][] data, String name) {
-
-        String exportPath = "export";
-
-
         for(int i = 0; i < data.length; i++) {
             exportAsImage(data[i], name, i);
         }
     }
 
     private void exportAsImage(float[] data, String name, int count) {
-        String exportPath = "export";
-
         new File(exportPath + "/" + name + "/").mkdirs();
 
         BufferedImage image = DataConverter.pixelDataToImage(data, 0.0f, false);
