@@ -47,43 +47,61 @@ public class Trainer {
         crbm1.killFirst();
         float[][][] hidden1 = crbm1.getHidden(data, crbm1DataEdgeLength);
 
-        //float[][][] maxPooled1 = maxPooling(hidden1, crbm1PoolingSize, crbm1DataEdgeLength, crbm1FilterEdgeLength);
-        //int crbm2DataEdgeLength = maxPoolEdgeCalc(crbm1PoolingSize, crbm1DataEdgeLength, crbm1FilterEdgeLength);
-
         // EXPORT
         exportAsImage(reduceDimension(hidden1), "hidden1");
         // EXPORT END
 
+        float[][][] maxPooled1 = maxPooling(hidden1, crbm1PoolingSize, crbm1DataEdgeLength, crbmFilterEdgeLength);
+        int crbm2MaxPooledDataEdgeLength = maxPoolEdgeCalc(crbm1PoolingSize, crbm1DataEdgeLength, crbmFilterEdgeLength);
+
+        // EXPORT
+        exportAsImage(reduceDimension(maxPooled1), "maxPooled1");
+        // EXPORT END
+
         CRBM crbm2 = new CRBM(K, crbmFilterEdgeLength);
-        crbm2.train(reduceDimension(hidden1), crbm2DataEdgeLength, epochs, learningRate, "Second-RBM");
+        crbm2.train(reduceDimension(maxPooled1), crbm2MaxPooledDataEdgeLength, epochs, learningRate, "Second-RBM");
         crbm2.killFirst();
-        float[][][] hidden2 = crbm2.getHidden(reduceDimension(hidden1), crbm2DataEdgeLength);
+        float[][][] hidden2 = crbm2.getHidden(reduceDimension(maxPooled1), crbm2MaxPooledDataEdgeLength);
 
         // EXPORT
         exportAsImage(reduceDimension(hidden2), "hidden2");
         // EXPORT END
 
-        float[][] visible2 = crbm2.getVisible(hidden2, null, crbm2DataEdgeLength);
+        float[][][] maxPooled2 = maxPooling(hidden2, crbm2PoolingSize, crbm2MaxPooledDataEdgeLength, crbmFilterEdgeLength);
+
+        float[][] features = reduceDimension(maxPooled2);
 
         // EXPORT
-        exportAsImage(visible2, "visible2");
+        exportAsImage(features, "maxPooled2");
         // EXPORT END
+
+
+
+
+
+
+
+
+
+
+
+
+
+        CRBM crbm3 = new CRBM(K, crbmFilterEdgeLength);
+        crbm3.train(reduceDimension(hidden1), crbm2DataEdgeLength, epochs, learningRate, "Second-RBM");
+        crbm3.killFirst();
+        float[][][] hidden3 = crbm2.getHidden(reduceDimension(hidden1), crbm2DataEdgeLength);
+
+        // EXPORT
+        exportAsImage(reduceDimension(hidden3), "hidden3");
+        // EXPORT END
+
+        float[][] visible2 = crbm2.getVisible(hidden3, null, crbm2DataEdgeLength);
+        exportAsImage(visible2, "visible2");
 
         float[][] visible1 = crbm1.getVisible(expandDimension(visible2, K), null, crbm2DataEdgeLength - crbmFilterEdgeLength + 1);
 
-        // EXPORT
         exportAsImage(visible1, "visible1");
-        // EXPORT END
-
-        //float[][][] nn = nearestNeighbour(expandDimension(visible2, K), crbm2DataEdgeLength - crbm2FilterOffset, crbm2DataEdgeLength - crbm2FilterOffset, (crbm2DataEdgeLength - crbm2FilterOffset) * crbm1PoolingSize, (crbm2DataEdgeLength - crbm2FilterOffset) * crbm1PoolingSize);
-
-        //int crbm1FilterOffset = crbm1FilterEdgeLength - 1;
-        //float[][] visible = crbm1.getVisible(nn, null, (crbm2DataEdgeLength - crbm2FilterOffset) * crbm1PoolingSize - crbm1FilterOffset);
-
-        //float[][][] maxPooled2 = maxPooling(hidden2, crbm2PoolingSize, crbm2DataEdgeLength, crbm2FilterEdgeLength);
-
-        //exportAsImage(visible, "visible");
-
     }
 
     float[][][] expandDimension(float[][] data, int nextDimensionSize) {
