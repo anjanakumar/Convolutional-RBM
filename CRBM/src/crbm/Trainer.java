@@ -15,14 +15,14 @@ public class Trainer {
 
     private int K = 15;
     private float learningRate = 0.01f;
-    private int epochs = 10;
+    private int epochs = 100;
 
-    private int crbm1FilterEdgeLength = 5;
-    private int crbm1DataEdgeLength = 28;
+    private int crbmFilterEdgeLength = 5;
+
+    private int crbm1DataEdgeLength = 32;
     private int crbm1PoolingSize = 2;
 
-    private int crbm2FilterEdgeLength = 3;
-    private int crbm2DataEdgeLength = 28;
+    private int crbm2DataEdgeLength = crbm1DataEdgeLength - crbmFilterEdgeLength + 1;
     private int crbm2PoolingSize = 2;
 
 
@@ -40,35 +40,49 @@ public class Trainer {
 
         float[][] data = Main.loadData();
 
-        CRBM crbm1 = new CRBM(K, crbm1FilterEdgeLength);
-        crbm1.train(data, crbm1DataEdgeLength, epochs, learningRate, "First-RBM");
+        exportAsImage(data, "test");
 
+        CRBM crbm1 = new CRBM(K, crbmFilterEdgeLength);
+        crbm1.train(data, crbm1DataEdgeLength, epochs, learningRate, "First-RBM");
+        crbm1.killFirst();
         float[][][] hidden1 = crbm1.getHidden(data, crbm1DataEdgeLength);
 
-        float[][][] maxPooled1 = maxPooling(hidden1, crbm1PoolingSize, crbm1DataEdgeLength, crbm1FilterEdgeLength);
+        //float[][][] maxPooled1 = maxPooling(hidden1, crbm1PoolingSize, crbm1DataEdgeLength, crbm1FilterEdgeLength);
+        //int crbm2DataEdgeLength = maxPoolEdgeCalc(crbm1PoolingSize, crbm1DataEdgeLength, crbm1FilterEdgeLength);
 
+        // EXPORT
+        exportAsImage(reduceDimension(hidden1), "hidden1");
+        // EXPORT END
 
-        float[][] visibleTest = crbm1.getVisible(hidden1, null, crbm1DataEdgeLength);
-        exportAsImage(visibleTest, "visible1");
-        exportAsImage(reduceDimension(expandDimension(visibleTest, data.length)), "visible2");
+        CRBM crbm2 = new CRBM(K, crbmFilterEdgeLength);
+        crbm2.train(reduceDimension(hidden1), crbm2DataEdgeLength, epochs, learningRate, "Second-RBM");
+        crbm2.killFirst();
+        float[][][] hidden2 = crbm2.getHidden(reduceDimension(hidden1), crbm2DataEdgeLength);
 
-        int crbm2DataEdgeLength = maxPoolEdgeCalc(crbm1PoolingSize, crbm1DataEdgeLength, crbm1FilterEdgeLength);
-        CRBM crbm2 = new CRBM(K, crbm2FilterEdgeLength);
-        crbm2.train(reduceDimension(maxPooled1), crbm2DataEdgeLength, epochs, learningRate, "Second-RBM");
+        // EXPORT
+        exportAsImage(reduceDimension(hidden2), "hidden2");
+        // EXPORT END
 
-        float[][][] hidden2 = crbm2.getHidden(reduceDimension(maxPooled1), crbm2DataEdgeLength);
-
-        int crbm2FilterOffset =  (crbm2FilterEdgeLength - 1) * 2;
         float[][] visible2 = crbm2.getVisible(hidden2, null, crbm2DataEdgeLength);
 
-        float[][][] nn = nearestNeighbour(expandDimension(visible2, K), crbm2DataEdgeLength - crbm2FilterOffset, crbm2DataEdgeLength - crbm2FilterOffset, (crbm2DataEdgeLength - crbm2FilterOffset) * crbm1PoolingSize, (crbm2DataEdgeLength - crbm2FilterOffset) * crbm1PoolingSize);
+        // EXPORT
+        exportAsImage(visible2, "visible2");
+        // EXPORT END
 
-        int crbm1FilterOffset = crbm1FilterEdgeLength - 1;
-        float[][] visible = crbm1.getVisible(nn, null, (crbm2DataEdgeLength - crbm2FilterOffset) * crbm1PoolingSize - crbm1FilterOffset);
+        float[][] visible1 = crbm1.getVisible(expandDimension(visible2, K), null, crbm2DataEdgeLength - crbmFilterEdgeLength + 1);
+
+        // EXPORT
+        exportAsImage(visible1, "visible1");
+        // EXPORT END
+
+        //float[][][] nn = nearestNeighbour(expandDimension(visible2, K), crbm2DataEdgeLength - crbm2FilterOffset, crbm2DataEdgeLength - crbm2FilterOffset, (crbm2DataEdgeLength - crbm2FilterOffset) * crbm1PoolingSize, (crbm2DataEdgeLength - crbm2FilterOffset) * crbm1PoolingSize);
+
+        //int crbm1FilterOffset = crbm1FilterEdgeLength - 1;
+        //float[][] visible = crbm1.getVisible(nn, null, (crbm2DataEdgeLength - crbm2FilterOffset) * crbm1PoolingSize - crbm1FilterOffset);
 
         //float[][][] maxPooled2 = maxPooling(hidden2, crbm2PoolingSize, crbm2DataEdgeLength, crbm2FilterEdgeLength);
 
-        exportAsImage(visible, "visible");
+        //exportAsImage(visible, "visible");
 
     }
 

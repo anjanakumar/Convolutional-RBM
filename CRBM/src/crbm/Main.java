@@ -14,6 +14,7 @@ public class Main {
     // DATA
     private static final String IMPORT_PATH = "CRBM/Data/MNIST_Small";
     private static final int EDGELENGTH = 28;
+    private static final int PADDING = 2;
     private static final boolean ISRGB = false;
     private static final boolean BINARIZE = true;
     private static final boolean INVERT = true;
@@ -48,13 +49,32 @@ public class Main {
                 return null;
             }
 
-            data[i] = imageData;
+            data[i] = pad(imageData, EDGELENGTH, PADDING);
 
         }
 
         return data;
     }
 
+    private static float[] pad(float[] data, int dataEdgeLength, int padding) {
+        int newEdgeLength = dataEdgeLength + padding*2;
+        float[] result = new float[newEdgeLength*newEdgeLength];
 
+        for (int y = 0; y < newEdgeLength; y++) {
+            for (int x = 0; x < newEdgeLength; x++) {
+
+                int pos = y * newEdgeLength + x;
+                if (y < padding || x < padding || y >= dataEdgeLength + padding || x >= dataEdgeLength + padding) {
+                    result[pos] = 0.0f;
+                } else {
+                    int posm = (y - padding) * (newEdgeLength - padding*2) + x - padding;
+                    result[pos] = data[posm];
+                }
+
+            }
+        }
+
+        return result;
+    }
 
 }
