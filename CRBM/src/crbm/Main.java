@@ -20,7 +20,7 @@ public class Main {
     private static final int PADDING = 2;
     private static final boolean ISRGB = false;
     private static final boolean BINARIZE = false;
-    private static final boolean INVERT = false;
+    private static final boolean INVERT = true;
     private static final float MINDATA = 0.0f;
     private static final float MAXDATA = 1.0f;
 
