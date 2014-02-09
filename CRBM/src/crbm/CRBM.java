@@ -104,8 +104,6 @@ public class CRBM {
         FloatMatrix V0M = new FloatMatrix(data);
         FloatMatrix V1M = new FloatMatrix(V1);
 
-        exportAsImage(V1, "bla", 0);
-
         return (float)Math.sqrt(MatrixFunctions.pow(V0M.sub(V1M), 2.0f).sum());
     }
 
