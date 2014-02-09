@@ -31,7 +31,7 @@ public class Cluster {
     }
     
     public Cluster(float[] center){
-        this.data = null;//new LinkedList<>();
+        this.data = new LinkedList<>();
         this.center = center;
         this.totalDistance = 0f;
     }
