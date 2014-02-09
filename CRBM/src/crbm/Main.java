@@ -23,7 +23,7 @@ public class Main {
     private static final boolean INVERT = true;
     private static final float MINDATA = 0.0f;
     private static final float MAXDATA = 1.0f;
-    
+
     private static final float CLUSTER_DISTANCE_FACTOR = 5f;
 
     public static void main(String arg[]) {
@@ -81,20 +81,21 @@ public class Main {
 
         return result;
     }
+    
     public static Cluster[] clustering(float[][] data){
         if(data == null || data.length == 0) return null;
         int len = data[0].length;
-        
+
         // the maxDistance dependends on the data dimensionality
         float maxDistance = CLUSTER_DISTANCE_FACTOR * len;
-                
+
         Random random = new Random();
         Cluster[] result = new Cluster[1];
         result[0] = new Cluster(data);
         float resultDistance = result[0].getTotalDistance();
-        
+
         // add one new cluster in each iteration
-        // until the total distance of all data 
+        // until the total distance of all data
         // to their cluster centers is small enough
         while(resultDistance > maxDistance){
             // find worst cluster
@@ -111,7 +112,7 @@ public class Main {
             Cluster[] tmp = new Cluster[result.length + 1];
             for(int i = 0; i < result.length; ++i){
                 tmp[i] = new Cluster(result[i].getCenter());
-            }        
+            }
             // split worst cluster into two separated clusters
             float[] cOld = result[clusterIndex].getCenter();
             float[] c1 = new float[len];
@@ -143,7 +144,7 @@ public class Main {
                 resultDistance += c.getTotalDistance();
             }
             result = tmp;
-        }      
+        }
         return result;
     }
 
