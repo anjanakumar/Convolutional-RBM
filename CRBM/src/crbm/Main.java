@@ -1,18 +1,21 @@
 package crbm;
 
+import java.awt.image.BufferedImage;
 import javax.imageio.ImageIO;
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.util.Random;
+import org.apache.commons.io.FileUtils;
 
 /**
  * Created by Radek on 08.02.14.
  */
 public class Main {
     
-    //private static final String importPath = "Data/MNIST_Small";
-    private static final String importPath = "CRBM/Data/MNIST_Small";
+    private static final String exportPath = "export";
+    private static final String importPath = "Data/MNIST_Small";
+    //private static final String importPath = "CRBM/Data/MNIST_Small";
     private static final int edgeLength = 28;
     private static final int padding = 2;
     private static final boolean isRGB = false;
@@ -24,6 +27,7 @@ public class Main {
     private static final float maxClusterDistance = 20f;
 
     public static void main(String arg[]) {
+        deleteOldExportData();
         Trainer trainer = new Trainer();
         trainer.train();
     }
@@ -140,5 +144,37 @@ public class Main {
             result = tmp;
         }
         return result;
+    }
+    
+    public static void printClusters(Cluster[] clusters){
+        for(int i = 0; i < clusters.length; ++i){
+            System.out.println("Cluster " + i + ": " + clusters[i]);
+        }
+    }
+    
+    public static void deleteOldExportData(){
+        try {
+            FileUtils.deleteDirectory(new File(exportPath));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+    
+    public static void exportAsImage(float[][] data, String name) {
+        for(int i = 0; i < data.length; i++) {
+            exportAsImage(data[i], name, i);
+        }
+    }
+
+    public static void exportAsImage(float[] data, String name, int count) {
+        new File(exportPath + "/" + name + "/").mkdirs();
+
+        BufferedImage image = DataConverter.pixelDataToImage(data, 0.0f, false);
+        File outputfile = new File(exportPath + "/" + name + "/" + count + ".png");
+        try {
+            ImageIO.write(image, "png", outputfile);
+        } catch (IOException ex) {
+            ex.printStackTrace();
+        }
     }
 }
