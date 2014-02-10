@@ -12,7 +12,7 @@ public class Trainer {
     
     private final int K = 15;
     private final float learningRate = 0.01f;
-    private final int epochs = 100;
+    private final int epochs = 1;
 
     private final int crbmFilterEdgeLength = 5;
 
@@ -26,41 +26,34 @@ public class Trainer {
 
     public void train() {
 
-        float[][] data = Main.loadData();
+        DataSet[] dataSet = Main.loadData();
+        float[][] data = Main.dataSetToArray(dataSet);
 
         CRBM crbm1 = new CRBM(K, crbmFilterEdgeLength);
         crbm1.train(data, crbm1DataEdgeLength, epochs, learningRate, "First-RBM");
         float[][][] hidden1 = crbm1.getHidden(data, crbm1DataEdgeLength);
 
-        // EXPORT
         Main.exportAsImage(reduceDimension(hidden1), "hidden1");
-        // EXPORT END
 
         float[][][] maxPooled1 = maxPooling(hidden1, crbm1PoolingSize, crbm1DataEdgeLength, crbmFilterEdgeLength);
         int crbm2MaxPooledDataEdgeLength = maxPoolEdgeCalc(crbm1PoolingSize, crbm1DataEdgeLength, crbmFilterEdgeLength);
 
-        // EXPORT
         Main.exportAsImage(reduceDimension(maxPooled1), "maxPooled1");
-        // EXPORT END
 
         CRBM crbm2 = new CRBM(K, crbmFilterEdgeLength);
         crbm2.train(reduceDimension(maxPooled1), crbm2MaxPooledDataEdgeLength, epochs, learningRate, "Second-RBM");
         float[][][] hidden2 = crbm2.getHidden(reduceDimension(maxPooled1), crbm2MaxPooledDataEdgeLength);
 
-        // EXPORT
         Main.exportAsImage(reduceDimension(hidden2), "hidden2");
-        // EXPORT END
 
         float[][][] maxPooled2 = maxPooling(hidden2, crbm2PoolingSize, crbm2MaxPooledDataEdgeLength, crbmFilterEdgeLength);
 
-        float[][] features = reduceDimension(maxPooled2);
+        // reduce for export
+        float[][] reducedMaxPooled2 = reduceDimension(maxPooled2);
+        Main.exportAsImage(reducedMaxPooled2, "maxPooled2");
         
         // End Training
         // Reconstructions
-
-        // EXPORT
-        Main.exportAsImage(features, "maxPooled2");
-        // EXPORT END
 
         CRBM crbm3 = new CRBM(K, crbmFilterEdgeLength);
         crbm3.train(reduceDimension(hidden1), crbm2DataEdgeLength, epochs, learningRate, "Second-RBM");
@@ -78,14 +71,27 @@ public class Trainer {
         Main.exportAsImage(visible1, "visible1");
         
         // Use plain old RBM
-        IRBM rbm = new RBMJBlasOpti(15, 10, learningRate, new DefaultLogisticMatrixFunction(), false, 0, null);;
-        float[][] rbmData = new float[][]{};
+        
+        float[][] rbmData = concatDataPartitions(maxPooled2);
+        
+        IRBM rbm = new RBMJBlasOpti(rbmData[0].length, 100, learningRate, new DefaultLogisticMatrixFunction(), false, 0, null);
         rbm.train(rbmData,new StoppingCondition(epochs), false, false);
         float[][] rbmResult = rbm.getHidden(rbmData, false);
         
-        // Use Generalized Lloyd for final clustering
-        Cluster[] clusters = Main.clustering(rbmResult);
-        Main.printClusters(clusters);
+    }
+    
+    private float[][] concatDataPartitions(float[][][] data){
+        float[][] result = new float[data.length][data[0].length * data[0][0].length];
+        
+        for(int i = 0; i < data.length; ++i){
+            for(int j = 0; j < data[0].length; ++j){
+                for(int k = 0; k < data[0][0].length; ++k){
+                    result[i][j * data[0][0].length + k] = data[i][j][k];
+                }
+            }
+        }
+        
+        return result;
     }
 
     float[][][] expandDimension(float[][] data, int nextDimensionSize) {

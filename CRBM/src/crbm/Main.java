@@ -5,6 +5,8 @@ import javax.imageio.ImageIO;
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Random;
 import org.apache.commons.io.FileUtils;
 
@@ -32,7 +34,7 @@ public class Main {
         trainer.train();
     }
 
-    public static float[][] loadData() {
+    public static DataSet[] loadData() {
 
         File imageFolder = new File(importPath);
         final File[] imageFiles = imageFolder.listFiles(new FilenameFilter() {
@@ -43,10 +45,9 @@ public class Main {
         });
 
         int size = edgeLength * edgeLength;
-        float[][] data = new float[imageFiles.length][size];
+        DataSet[] result = new DataSet[imageFiles.length];
 
         for (int i = 0; i < imageFiles.length; i++) {
-
             float[] imageData;
             try {
                 imageData = DataConverter.processPixelData(ImageIO.read(imageFiles[i]), edgeLength, binarize, invert, minData, maxData, isRGB);
@@ -54,12 +55,23 @@ public class Main {
                 System.out.println("Could not load: " + imageFiles[i].getAbsolutePath());
                 return null;
             }
-
-            data[i] = pad(imageData, edgeLength, padding);
+            
+            imageData = pad(imageData, edgeLength, padding);
+            
+            String label = imageFiles[i].getName().split("_")[0];
+            result[i] = new DataSet(imageData, label);
 
         }
 
-        return data;
+        return result;
+    }
+    
+    public static float[][] dataSetToArray(DataSet[] dataSet){
+        float[][] result = new float[dataSet.length][];
+        for(int i = 0; i < dataSet.length; ++i){
+            result[i] = dataSet[i].getData();
+        }
+        return result;
     }
 
     private static float[] pad(float[] data, int dataEdgeLength, int padding) {
@@ -83,72 +95,50 @@ public class Main {
         return result;
     }
     
-    public static Cluster[] clustering(float[][] data){
-        if(data == null || data.length == 0) return null;
-        int len = data[0].length;
-
-        Random random = new Random();
-        Cluster[] result = new Cluster[1];
-        result[0] = new Cluster(data);
-        float resultDistance = result[0].getTotalDistance();
-
-        // add one new cluster in each iteration
-        // until the total distance of all data
-        // to their cluster centers is small enough
-        while(resultDistance > maxClusterDistance){
-            // find worst cluster
-            float worstTotalDistance = 0;
-            int clusterIndex = 0;
-            for(int i = 0; i < result.length; ++i){
-                float cd = result[i].getTotalDistance();
-                if(cd > worstTotalDistance){
-                    worstTotalDistance = cd;
-                    clusterIndex = i;
-                }
-            }
-            // add additional cluster slot
-            Cluster[] tmp = new Cluster[result.length + 1];
-            for(int i = 0; i < result.length; ++i){
-                tmp[i] = new Cluster(result[i].getCenter());
-            }
-            // split worst cluster into two separated clusters
-            float[] cOld = result[clusterIndex].getCenter();
-            float[] c1 = new float[len];
-            float[] c2 = new float[len];
-            for(int i = 0; i < len; ++i){
-                float r = (random.nextFloat() - .5f) * .2f;
-                c1[i] = cOld[i] + r;
-                c2[i] = cOld[i] - r;
-            }
-            tmp[clusterIndex] = new Cluster(c1);
-            tmp[result.length] = new Cluster(c2);
-            // assign data vectors to new clusters
-            for(float[] v : data){
-                float bestClusterDistance = Float.MAX_VALUE;
-                int bestClusterIndex = -1;
-                for(int i = 0; i < tmp.length; ++i){
-                    float cd = tmp[i].distanceToCenter(v);
-                    if(cd < bestClusterDistance){
-                        bestClusterDistance = cd;
-                        bestClusterIndex = i;
-                    }
-                }
-                tmp[bestClusterIndex].addVector(v);
-            }
-            // initialize new clusters and calculate new distance
-            resultDistance = 0;
-            for(Cluster c : tmp){
-                c.init();
-                resultDistance += c.getTotalDistance();
-            }
-            result = tmp;
+    public static DataSet[] arrayToDataSet(float[][] rbmData, DataSet[] originalData){
+        if(rbmData.length != originalData.length) return null;
+        DataSet[] result = new DataSet[rbmData.length];
+        for(int i = 0; i < rbmData.length; ++i){
+            result[i] = new DataSet(rbmData[i], originalData[i].getLabel());
         }
         return result;
     }
     
+    public static float checkClusters(Cluster[] clusters, DataSet[] data){
+        System.out.println("Check clusters");
+        int wrongDecision = 0;
+        for(DataSet ds : data){
+            float[] d = ds.getData();
+            float bestClusterDistance = Float.MAX_VALUE;
+            String bestClusterLabel = "foobar";
+            for(Cluster c : clusters){
+                float clusterDistance = c.distanceToCenter(d);
+                if(clusterDistance < bestClusterDistance){
+                    bestClusterDistance = clusterDistance;
+                    bestClusterLabel = c.getLabel();
+                }
+            }
+            String realLabel = ds.getLabel();
+            if(bestClusterLabel != realLabel) ++wrongDecision;
+            System.out.println("Found " + bestClusterLabel + " instead of " + realLabel);
+        }
+        float error = (float)wrongDecision / data.length;
+        System.out.println("Wrong: " + wrongDecision + " / " + data.length + ", Error: " + error);
+        
+        return error;     
+    }
+    
     public static void printClusters(Cluster[] clusters){
+        System.out.println("Number of Clusters: " + clusters.length);
         for(int i = 0; i < clusters.length; ++i){
-            System.out.println("Cluster " + i + ": " + clusters[i]);
+            System.out.println();
+            System.out.println("Cluster " + i + ": " + clusters[i].getLabel());
+            float[] center = clusters[i].getCenter();
+            System.out.print("Center:");
+            for(float f : center){
+                System.out.print(" " + f);
+            }
+            System.out.println();
         }
     }
     

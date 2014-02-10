@@ -1,9 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
-
 package crbm;
 
 import java.util.Arrays;
@@ -15,25 +9,22 @@ import java.util.List;
  * @author christoph
  */
 public class Cluster {
-    
-    private final List<float[]> data;    
+       
+    private final String label;
+    private List<float[]> data;
     private float[] center;
-    private float totalDistance;
     
-    public Cluster(float[][] data){
-        this.data = Arrays.asList(data);
-        init();
-    }
-    
-    public final void init(){
-        this.center = center();
-        this.totalDistance = totalDistance();
-    }
-    
-    public Cluster(float[] center){
+    public Cluster(String label){
         this.data = new LinkedList<float[]>();
-        this.center = center;
-        this.totalDistance = 0f;
+        this.label = label;
+    }
+    
+    public void init(){
+        this.center = center();
+    }
+    
+    public void reset(){
+        this.data = new LinkedList<float[]>();
     }
     
     private float[] center(){
@@ -46,7 +37,7 @@ public class Cluster {
         
         for(float[] v : data){
             for(int i = 0; i < v.length; ++i){
-                center[i] += v[i];
+                result[i] += v[i];
             }
         }
         
@@ -54,16 +45,6 @@ public class Cluster {
             result[i] /= size;
         }
         return result;
-    }
-    
-    private float totalDistance() {
-        if(center == null) return 0;
-        
-        float sum = 0f;
-        for(float[] v : data){
-            sum += distanceToCenter(v);
-        }
-        return sum;
     }
     
     public void addVector(float[] v){
@@ -74,12 +55,12 @@ public class Cluster {
         return data;
     }
     
-    public float[] getCenter(){
-        return center;
+    public String getLabel(){
+        return label;
     }
     
-    public float getTotalDistance(){
-        return totalDistance;
+    public float[] getCenter(){
+        return center;
     }
     
     public float distanceToCenter(float[] v){
