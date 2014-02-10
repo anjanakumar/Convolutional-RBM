@@ -36,6 +36,8 @@ public class Trainer {
 
         float[][] data = Main.loadData();
 
+        /*
+
         CRBM crbm1 = new CRBM(K, crbmFilterEdgeLength);
         crbm1.train(data, crbm1DataEdgeLength, epochs, learningRate, "First-RBM");
         float[][][] hidden1 = crbm1.getHidden(data, crbm1DataEdgeLength);
@@ -66,19 +68,28 @@ public class Trainer {
         // EXPORT
         exportAsImage(features, "maxPooled2");
         // EXPORT END
+        */
 
-        CRBM crbm3 = new CRBM(K, crbmFilterEdgeLength);
-        crbm3.train(hidden1, crbm2DataEdgeLength, epochs, learningRate, "Second-RBM");
-        float[][][] hidden3 = crbm2.getHidden(hidden1, crbm2DataEdgeLength);
+        CRBM crbm12 = new CRBM(K, crbmFilterEdgeLength);
+        crbm12.train(data, crbm1DataEdgeLength, epochs, learningRate, "First-RBM");
+        float[][][] hidden12 = crbm12.getHidden(data, crbm1DataEdgeLength);
 
         // EXPORT
-        exportAsImage(reduceDimension(hidden3), "hidden3");
+        exportAsImage(reduceDimension(hidden12), "hidden1");
         // EXPORT END
 
-        float[][][] visible2 = crbm3.getVisible2D(hidden3, null, crbm2DataEdgeLength);
+        CRBM crbm22 = new CRBM(K, crbmFilterEdgeLength);
+        crbm22.train(hidden12, crbm2DataEdgeLength, epochs, learningRate, "Second-RBM");
+        float[][][] hidden22 = crbm22.getHidden(hidden12, crbm2DataEdgeLength);
+
+        // EXPORT
+        exportAsImage(reduceDimension(hidden22), "hidden2");
+        // EXPORT END
+
+        float[][][] visible2 = crbm22.getVisible2D(hidden22, null, crbm2DataEdgeLength);
         exportAsImage(reduceDimension(visible2), "visible2");
 
-        float[][] visible1 = crbm1.getVisible(visible2, null, crbm2DataEdgeLength - crbmFilterEdgeLength + 1);
+        float[][] visible1 = crbm12.getVisible(hidden12, null, crbm2DataEdgeLength - crbmFilterEdgeLength + 1);
 
         exportAsImage(visible1, "visible1");
     }

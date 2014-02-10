@@ -55,7 +55,7 @@ public class CRBM {
         for (int e = 0; e < epochs; e++) {
             float error = 0;
             for (float[][] aData : data) {
-                error += train(aData, dataEdgeLength, learningRate);
+                error += train2D(aData, dataEdgeLength, learningRate);
             }
             error /= data.length;
             System.out.println(error);
@@ -86,7 +86,7 @@ public class CRBM {
         }
     }
 
-    private float train(float[][] data, int dataEdgeLength, float learningRate) {
+    private float train2D(float[][] data, int dataEdgeLength, float learningRate) {
         int offset = filterEdgeLength - 1;
         int K = W.length;
         float[][] W1;
@@ -109,11 +109,11 @@ public class CRBM {
 
         float[] V1m = new float[(dataEdgeLength - offset * 2) * (dataEdgeLength - offset * 2)];
         for (int k = 0; k < W1.length; k++) {
-            float[] r = filter(data, W1[k], dataEdgeLength - offset, this.filterEdgeLength, true);
-            V1m = add(V1m, r);
+            V1m = filter(PH0_k, W1[k], dataEdgeLength - offset, this.filterEdgeLength, true);
         }
 
         addBias(V1m, b);
+
         float[] V1 = logistic(V1m);
         if(data != null) {
             V1 = concat(data, V1, dataEdgeLength, filterEdgeLength);
@@ -134,7 +134,10 @@ public class CRBM {
             W[k] = CD(W[k], Grad0_k[k], Grad1_k[k], learningRate);
         }
 
-        return 0.0f;
+        FloatMatrix V0M = new FloatMatrix(PH0_k);
+        FloatMatrix V1M = new FloatMatrix(PH1_k);
+
+        return (float)Math.sqrt(MatrixFunctions.pow(V0M.sub(V1M), 2.0f).sum());
     }
 
     private float train(float[] data, int dataEdgeLength, float learningRate) {
@@ -156,7 +159,7 @@ public class CRBM {
             H0_k[k] = bernoulli(PH0_k[k]);
         }
 
-        float[] V1 = getVisible(H0_k, data, dataEdgeLength);
+        float[] V1 = getVisible(PH0_k, data, dataEdgeLength);
 
         float[][] PH1_k = new float[K][];
         float[][] Grad1_k = new float[K][];
@@ -171,8 +174,8 @@ public class CRBM {
             W[k] = CD(W[k], Grad0_k[k], Grad1_k[k], learningRate);
         }
 
-        FloatMatrix V0M = new FloatMatrix(data);
-        FloatMatrix V1M = new FloatMatrix(V1);
+        FloatMatrix V0M = new FloatMatrix(PH0_k);
+        FloatMatrix V1M = new FloatMatrix(PH1_k);
 
         return (float)Math.sqrt(MatrixFunctions.pow(V0M.sub(V1M), 2.0f).sum());
     }
@@ -201,7 +204,7 @@ public class CRBM {
         return r;
     }
 
-    private float[] filter(float[][] data, float[] filter, int dataEdgeLength, int filterEdgeLength, boolean normalize) {
+    private float[] filter(float[][] data, float[] filter, int dataEdgeLength, int filterEdgeLength, boolean norm) {
         int offset = filterEdgeLength - 1;
         final int rEdgeLength = dataEdgeLength - offset;
 
@@ -220,8 +223,9 @@ public class CRBM {
                         }
                     }
                 }
-                if(normalize) {
-                    sum /= (float)data.length;
+
+                if(norm) {
+                    sum /= data.length;
                 }
 
                 r[y * rEdgeLength + x] = sum;
@@ -343,12 +347,9 @@ public class CRBM {
     }
 
     public float[][] getHidden2D(float[][] data, int dataEdgeLength) {
-        int offset = filterEdgeLength - 1;
         int K = W.length;
-        float[][] W1;
 
         float[][] PH0_k = new float[K][];
-        float[][] Grad0_k = new float[K][];
         float[][] H0_k = new float[K][];
 
         for (int k = 0; k < K; k++) {
@@ -357,7 +358,6 @@ public class CRBM {
                 addBias(PH0_k[k], c_k);
             }
             PH0_k[k] = logistic(PH0_k[k]);
-            Grad0_k[k] = filter(data, PH0_k[k], dataEdgeLength, dataEdgeLength - offset, true);
             H0_k[k] = bernoulli(PH0_k[k]);
         }
 
@@ -373,7 +373,6 @@ public class CRBM {
     }
 
     public float[][] getHidden(float[] data, int dataEdgeLength) {
-
         float[][] PH0_k = new float[W.length][];
         float[][] H0_k = new float[W.length][];
 
@@ -385,29 +384,23 @@ public class CRBM {
             PH0_k[k] = logistic(PH0_k[k]);
             H0_k[k] = bernoulli(PH0_k[k]);
         }
+
         return PH0_k;
     }
 
     public float[][][] getVisible2D(float[][][] data, float[][] original, int dataEdgeLength) {
+        // 20
+        // 15
+        // 5*5
         float[][][] result = new float[data.length][data[0].length][];
 
         for(int i = 0; i < data.length; i++) {
             float[][] W1 = flip(W);
             int offset = filterEdgeLength - 1;
             for (int k = 0; k < W1.length; k++) {
-                result[i][k] = logistic(filter(data[i], W1[k], dataEdgeLength - offset, this.filterEdgeLength, true));
-//                V1m = add(V1m, r);
+                result[i][k] = filter(data[i][k], W1[k], dataEdgeLength - offset, this.filterEdgeLength);
+                result[i][k] = logistic(result[i][k]);
             }
-
-
-//
-//            addBias(V1m, b);
-//           float[] V1 = logistic(V1m);
-
-//            if(data != null) {
-//                V1 = concat(data[i], V1, dataEdgeLength, filterEdgeLength);
-//            }
-
         }
 
         return result;
