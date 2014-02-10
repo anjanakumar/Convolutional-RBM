@@ -1,19 +1,18 @@
 package crbm;
 
-import org.apache.commons.io.FileUtils;
-
-import javax.imageio.ImageIO;
-import java.awt.image.BufferedImage;
-import java.io.IOException;
+import crbm.rbm.IRBM;
+import crbm.rbm.RBMJBlasOpti;
+import crbm.rbm.StoppingCondition;
 import java.util.Arrays;
-import java.io.File;
+import java.util.List;
 
 /**
  * Created by Radek on 08.02.14.
  */
 public class Trainer {
-
-    private final String exportPath = "export";
+    
+    private static final String trainingDataPath = "Data/MNIST_Small";
+    private static final String testDataPath = "Data/MNIST_Small";
     
     private final int K = 15;
     private final float learningRate = 0.01f;
@@ -26,61 +25,86 @@ public class Trainer {
 
     private final int crbm2DataEdgeLength = crbm1DataEdgeLength - crbmFilterEdgeLength + 1;
     private final int crbm2PoolingSize = 2;
+    
+    private final int rbmOutputSize = 30;
 
     public void train() {
-        try {
-            FileUtils.deleteDirectory(new File(exportPath));
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
 
-        float[][] data = Main.loadData();
+        DataSet[] trainingDataSet = Main.loadData(trainingDataPath);
+        float[][] trainingData = Main.dataSetToArray(trainingDataSet);
 
         CRBM crbm1 = new CRBM(K, crbmFilterEdgeLength);
-        crbm1.train(data, crbm1DataEdgeLength, epochs, learningRate, "First-RBM");
-        float[][][] hidden1 = normalize(crbm1.getHidden(data, crbm1DataEdgeLength));
+        crbm1.train(trainingData, crbm1DataEdgeLength, epochs, learningRate, "First-RBM");
+        float[][][] hidden1 = normalize(crbm1.getHidden(trainingData, crbm1DataEdgeLength));
 
-        // EXPORT
-        exportAsImage(reduceDimension(hidden1), "hidden1");
-        // EXPORT END
+        Main.exportAsImage(reduceDimension(hidden1), "hidden1", 0);
 
         float[][][] maxPooled1 = maxPooling(hidden1, crbm1PoolingSize, crbm1DataEdgeLength, crbmFilterEdgeLength);
         int crbm2MaxPooledDataEdgeLength = maxPoolEdgeCalc(crbm1PoolingSize, crbm1DataEdgeLength, crbmFilterEdgeLength);
 
-        // EXPORT
-        exportAsImage(reduceDimension(maxPooled1), "maxPooled1");
-        // EXPORT END
+        Main.exportAsImage(reduceDimension(maxPooled1), "maxPooled1", 0);
 
         CRBM crbm2 = new CRBM(K, crbmFilterEdgeLength);
         crbm2.train(maxPooled1, crbm2MaxPooledDataEdgeLength, epochs, learningRate, "Second-RBM");
         float[][][] hidden2 = normalize(crbm2.getHidden(maxPooled1, crbm2MaxPooledDataEdgeLength));
 
-        // EXPORT
-        exportAsImage(reduceDimension(hidden2), "hidden2");
-        // EXPORT END
+        Main.exportAsImage(reduceDimension(hidden2), "hidden2", 0);
 
         float[][][] maxPooled2 = maxPooling(hidden2, crbm2PoolingSize, crbm2MaxPooledDataEdgeLength, crbmFilterEdgeLength);
 
-        float[][] features = reduceDimension(maxPooled2);
-
-        // EXPORT
-        exportAsImage(features, "maxPooled2");
-        // EXPORT END
+        // reduce for export
+        float[][] reducedMaxPooled2 = reduceDimension(maxPooled2);
+        Main.exportAsImage(reducedMaxPooled2, "maxPooled2", 0);
+        
+        // End Training
+        // Reconstructions
 
         CRBM crbm3 = new CRBM(K, crbmFilterEdgeLength);
         crbm3.train(hidden1, crbm2DataEdgeLength, epochs, learningRate, "Second-RBM");
         float[][][] hidden3 = crbm2.getHidden(hidden1, crbm2DataEdgeLength);
 
         // EXPORT
-        exportAsImage(reduceDimension(hidden3), "hidden3");
+        Main.exportAsImage(reduceDimension(hidden3), "hidden3", 0);
         // EXPORT END
 
-        float[][][] visible2 = normalize(crbm3.getVisible2D(hidden3, null, crbm2DataEdgeLength));
-        exportAsImage(reduceDimension(visible2), "visible2");
+        float[][][] visible2 = crbm3.getVisible2D(hidden3, null, crbm2DataEdgeLength);
+        Main.exportAsImage(visible2, "visible2");
 
-        float[][] visible1 = normalize(crbm1.getVisible(visible2, null, crbm2DataEdgeLength - crbmFilterEdgeLength + 1));
+        float[][] visible1 = crbm1.getVisible(visible2, null, crbm2DataEdgeLength - crbmFilterEdgeLength + 1);
 
-        exportAsImage(visible1, "visible1");
+        Main.exportAsImage(visible1, "visible1", 0);
+        
+        // Use plain old RBM        
+        float[][] rbmData = concatDataPartitions(maxPooled2);
+        
+        IRBM rbm = new RBMJBlasOpti(rbmData[0].length, 100, learningRate, new DefaultLogisticMatrixFunction(), false, 0, null);
+        rbm.train(rbmData,new StoppingCondition(epochs), false, false);
+        float[][] trainingDataResult = rbm.getHidden(rbmData, false);
+        
+        // Clustering
+        DataSet[] trainingDataResultSet = Main.arrayToDataSet(trainingDataResult, trainingDataSet);
+        List<Cluster> clusters = Main.generateClusters(trainingDataResultSet);
+        
+        // Check Clusters
+        DataSet[] testDataSet = Main.loadData(testDataPath);
+        float[][] testData = Main.dataSetToArray(testDataSet);
+        float[][] testDataResult = new float[][]{}; // Get Hidden on current RBMs
+        DataSet[] testDataResultSet = Main.arrayToDataSet(testDataResult, testDataSet);
+        Main.checkClusters(clusters, testDataResultSet);
+    }
+    
+    private float[][] concatDataPartitions(float[][][] data){
+        float[][] result = new float[data.length][data[0].length * data[0][0].length];
+        
+        for(int i = 0; i < data.length; ++i){
+            for(int j = 0; j < data[0].length; ++j){
+                for(int k = 0; k < data[0][0].length; ++k){
+                    result[i][j * data[0][0].length + k] = data[i][j][k];
+                }
+            }
+        }
+        
+        return result;
     }
 
     float[][][] expandDimension(float[][] data, int nextDimensionSize) {
@@ -209,24 +233,6 @@ public class Trainer {
         }
 
         return result;
-    }
-
-    private void exportAsImage(float[][] data, String name) {
-        for(int i = 0; i < data.length; i++) {
-            exportAsImage(data[i], name, i);
-        }
-    }
-
-    private void exportAsImage(float[] data, String name, int count) {
-        new File(exportPath + "/" + name + "/").mkdirs();
-
-        BufferedImage image = DataConverter.pixelDataToImage(data, 0.0f, false);
-        File outputfile = new File(exportPath + "/" + name + "/" + count + ".png");
-        try {
-            ImageIO.write(image, "png", outputfile);
-        } catch (IOException ex) {
-            ex.printStackTrace();
-        }
     }
     
     
