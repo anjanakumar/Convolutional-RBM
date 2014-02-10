@@ -29,6 +29,9 @@ public class CRBM {
     private final float[][] W;
     private final int filterEdgeLength;
 
+    private float c_k = 0f;
+    private float b = 0f;
+
 
     public CRBM(int K, int filterEdgeLength) {
         this.W = initW(K, filterEdgeLength);
@@ -57,6 +60,7 @@ public class CRBM {
             error /= data.length;
             System.out.println(error);
         }
+        //killFirst();
 
         System.out.println("Training finished");
     }
@@ -78,8 +82,8 @@ public class CRBM {
 
         for (int k = 0; k < K; k++) {
             PH0_k[k] = filter(data, W[k], dataEdgeLength, filterEdgeLength);
-            if(k == 0) {
-                addBias(PH0_k[k], -6);
+            if(k != 0) {
+                addBias(PH0_k[k], c_k);
             }
             PH0_k[k] = logistic(PH0_k[k]);
             Grad0_k[k] = filter(data, PH0_k[k], dataEdgeLength, dataEdgeLength - offset);
@@ -93,14 +97,14 @@ public class CRBM {
 
         for (int k = 0; k < K; k++) {
             PH1_k[k] = filter(V1, W[k], dataEdgeLength, filterEdgeLength);
-            if(k == 0) {
-                addBias(PH0_k[k], -6);
+            if(k != 0) {
+                addBias(PH0_k[k], c_k);
             }
             PH1_k[k] = logistic(PH1_k[k]);
             Grad1_k[k] = filter(V1, PH1_k[k], dataEdgeLength, dataEdgeLength - offset);
             W[k] = CD(W[k], Grad0_k[k], Grad1_k[k], learningRate);
         }
-        
+
         FloatMatrix V0M = new FloatMatrix(data);
         FloatMatrix V1M = new FloatMatrix(V1);
 
@@ -225,10 +229,14 @@ public class CRBM {
         float[][] H0_k = new float[W.length][];
 
         for (int k = 0; k < W.length; k++) {
-            PH0_k[k] = logistic(filter(data, W[k], dataEdgeLength, filterEdgeLength));
+            PH0_k[k] = filter(data, W[k], dataEdgeLength, filterEdgeLength);
+            if(k != 0) {
+                addBias(PH0_k[k], c_k);
+            }
+            PH0_k[k] = logistic(PH0_k[k]);
             H0_k[k] = bernoulli(PH0_k[k]);
         }
-        return PH0_k;
+        return H0_k;
     }
 
     public float[][] getVisible(float[][][] data, float[] original, int dataEdgeLength) {
@@ -252,15 +260,17 @@ public class CRBM {
             V1m = add(V1m, r);
         }
 
+        addBias(V1m, b);
         float[] V1 = logistic(V1m);
         if(original != null) {
             V1 = concat(original, V1, dataEdgeLength, filterEdgeLength);
         }
 
+        //
         return V1;
     }
 
-    private void addBias(float[] r, int bias) {
+    private void addBias(float[] r, float bias) {
         for(int i = 0; i < r.length; i++) {
             r[i] += bias;
         }
