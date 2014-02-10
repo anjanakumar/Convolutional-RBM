@@ -3,13 +3,7 @@ package crbm;
 import crbm.rbm.IRBM;
 import crbm.rbm.RBMJBlasOpti;
 import crbm.rbm.StoppingCondition;
-import org.apache.commons.io.FileUtils;
-
-import javax.imageio.ImageIO;
-import java.awt.image.BufferedImage;
-import java.io.IOException;
 import java.util.Arrays;
-import java.io.File;
 
 /**
  * Created by Radek on 08.02.14.
