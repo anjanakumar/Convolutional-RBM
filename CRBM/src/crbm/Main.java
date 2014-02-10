@@ -13,7 +13,7 @@ import org.apache.commons.io.FileUtils;
  * Created by Radek on 08.02.14.
  */
 public class Main {
-    
+
     private static final String importPath = "Data/MNIST_Small";
 
     private static final String exportPath = "export";
@@ -52,9 +52,9 @@ public class Main {
                 System.out.println("Could not load: " + imageFiles[i].getAbsolutePath());
                 return null;
             }
-            
+
             imageData = pad(imageData, edgeLength, padding);
-            
+
             String label = imageFiles[i].getName().split("_")[0];
             result[i] = new DataSet(imageData, label);
 
@@ -62,18 +62,18 @@ public class Main {
 
         return result;
     }
-    
-    public static float[][] dataSetToArray(DataSet[] dataSet){
+
+    public static float[][] dataSetToArray(DataSet[] dataSet) {
         float[][] result = new float[dataSet.length][];
-        for(int i = 0; i < dataSet.length; ++i){
+        for (int i = 0; i < dataSet.length; ++i) {
             result[i] = dataSet[i].getData();
         }
         return result;
     }
 
     private static float[] pad(float[] data, int dataEdgeLength, int padding) {
-        int newEdgeLength = dataEdgeLength + padding*2;
-        float[] result = new float[newEdgeLength*newEdgeLength];
+        int newEdgeLength = dataEdgeLength + padding * 2;
+        float[] result = new float[newEdgeLength * newEdgeLength];
 
         for (int y = 0; y < newEdgeLength; y++) {
             for (int x = 0; x < newEdgeLength; x++) {
@@ -82,7 +82,7 @@ public class Main {
                 if (y < padding || x < padding || y >= dataEdgeLength + padding || x >= dataEdgeLength + padding) {
                     result[pos] = 0.0f;
                 } else {
-                    int posm = (y - padding) * (newEdgeLength - padding*2) + x - padding;
+                    int posm = (y - padding) * (newEdgeLength - padding * 2) + x - padding;
                     result[pos] = data[posm];
                 }
 
@@ -91,97 +91,103 @@ public class Main {
 
         return result;
     }
-    
-    public static DataSet[] arrayToDataSet(float[][] resultData, DataSet[] originalData){
+
+    public static DataSet[] arrayToDataSet(float[][] resultData, DataSet[] originalData) {
         //Length of result data must be equal to length of original data, eg. number of pics
-        if(resultData.length != originalData.length) return null;
+        if (resultData.length != originalData.length) {
+            return null;
+        }
         DataSet[] result = new DataSet[resultData.length];
-        for(int i = 0; i < resultData.length; ++i){
+        for (int i = 0; i < resultData.length; ++i) {
             result[i] = new DataSet(resultData[i], originalData[i].getLabel());
         }
         return result;
     }
-    
-    public static List<Cluster> generateClusters(DataSet[] data){
+
+    public static List<Cluster> generateClusters(DataSet[] data) {
         List<Cluster> clusters = new LinkedList<Cluster>();
-        
-        for(DataSet ds : data){
+
+        for (DataSet ds : data) {
             boolean found = false;
             String label = ds.getLabel();
-            for(Cluster c : clusters){
-                if(c.getLabel() == label){
+            for (Cluster c : clusters) {
+                if (c.getLabel().equals(label)) {
                     c.addVector(ds.getData());
                     found = true;
                     break;
                 }
             }
-            if(!found){
+            if (!found) {
                 Cluster c = new Cluster(label);
                 c.addVector(ds.getData());
                 clusters.add(c);
             }
         }
-        for(Cluster c : clusters){
+        for (Cluster c : clusters) {
             c.init();
         }
-        
+
         return clusters;
     }
-    
-    public static float checkClusters(List<Cluster> clusters, DataSet[] data){
+
+    public static float checkClusters(List<Cluster> clusters, DataSet[] data) {
         System.out.println("Check clusters");
         int wrongDecision = 0;
-        for(DataSet ds : data){
+        for (DataSet ds : data) {
             float[] d = ds.getData();
             float bestClusterDistance = Float.MAX_VALUE;
             String bestClusterLabel = "foobar";
-            for(Cluster c : clusters){
+            for (Cluster c : clusters) {
                 float clusterDistance = c.distanceToCenter(d);
-                if(clusterDistance < bestClusterDistance){
+                if (clusterDistance < bestClusterDistance) {
                     bestClusterDistance = clusterDistance;
                     bestClusterLabel = c.getLabel();
                 }
             }
             String realLabel = ds.getLabel();
-            if(bestClusterLabel != realLabel) ++wrongDecision;
-            System.out.println("Found " + bestClusterLabel + " instead of " + realLabel);
+            if (!(bestClusterLabel.equals(realLabel))) {
+                ++wrongDecision;
+                System.out.println("Found " + bestClusterLabel + " instead of " + realLabel);
+            }
         }
-        float error = (float)wrongDecision / data.length;
+        float error = (float) wrongDecision / data.length;
         System.out.println("Wrong: " + wrongDecision + " / " + data.length + ", Error: " + error);
-        
-        return error;     
+
+        return error;
     }
-    
-    public static void printClusters(Cluster[] clusters){
-        System.out.println("Number of Clusters: " + clusters.length);
-        for(int i = 0; i < clusters.length; ++i){
+
+    public static void printClusters(List<Cluster> clusters) {
+        System.out.println("Number of Clusters: " + clusters.size());
+        int i = 0;
+        for (Cluster cluster: clusters) {
             System.out.println();
-            System.out.println("Cluster " + i + ": " + clusters[i].getLabel());
-            float[] center = clusters[i].getCenter();
+            System.out.println("Cluster " + i + ": " + cluster.getLabel());
+            float[] center = cluster.getCenter();
             System.out.print("Center:");
-            for(float f : center){
+            for (float f : center) {
                 System.out.print(" " + f);
             }
             System.out.println();
+            i++;
         }
     }
-    
-    public static void deleteOldExportData(){
+
+    public static void deleteOldExportData() {
         try {
             FileUtils.deleteDirectory(new File(exportPath));
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
-    
+
     public static void exportAsImage(float[][][] data, String name) {
-        for(int i = 0; i < data.length; i++) {
+        for (int i = 0; i < data.length; i++) {
             exportAsImage(data[i], name, i);
         }
     }
-    
+
     public static void exportAsImage(float[][] data, String name, int count) {
-        for(int i = 0; i < data.length; i++) {
+        for (int i = 0; i < data.length; i++) {
             exportAsImage(data[i], name, count, i);
         }
     }

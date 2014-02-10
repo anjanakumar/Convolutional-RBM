@@ -16,7 +16,7 @@ public class Trainer {
     
     private final int K = 15;
     private final float learningRate = 0.01f;
-    private final int epochs = 25;
+    private final int epochs = 100;
 
     private final int crbmFilterEdgeLength = 5;
 
@@ -60,7 +60,7 @@ public class Trainer {
         // Reconstructions
 
         CRBM crbm3 = new CRBM(K, crbmFilterEdgeLength);
-        crbm3.train(hidden1, crbm2DataEdgeLength, epochs, learningRate, "Second-RBM");
+//        crbm3.train(hidden1, crbm2DataEdgeLength, epochs, learningRate, "Second-RBM");
         float[][][] hidden3 = crbm2.getHidden(hidden1, crbm2DataEdgeLength);
 
         // EXPORT
@@ -78,17 +78,18 @@ public class Trainer {
         float[][] rbmData = concatDataPartitions(maxPooled2);
         
         IRBM rbm = new RBMJBlasOpti(rbmData[0].length, 100, learningRate, new DefaultLogisticMatrixFunction(), false, 0, null);
-        rbm.train(rbmData,new StoppingCondition(epochs), false, false);
+        rbm.train(rbmData,new StoppingCondition(2000), false, false);
         float[][] trainingDataResult = rbm.getHidden(rbmData, false);
         
         // Clustering
         DataSet[] trainingDataResultSet = Main.arrayToDataSet(trainingDataResult, trainingDataSet);
         List<Cluster> clusters = Main.generateClusters(trainingDataResultSet);
+        Main.printClusters(clusters);
         
         // Check Clusters
         DataSet[] testDataSet = Main.loadData(testDataPath);
         float[][] testData = Main.dataSetToArray(testDataSet);
-        float[][] testDataResult = getHiddenAll(testData, new CRBM[] {}, new IRBM[]{});
+        float[][] testDataResult = getHiddenAll(testData, new CRBM[] {crbm1, crbm2}, new IRBM[]{rbm});
         DataSet[] testDataResultSet = Main.arrayToDataSet(testDataResult, testDataSet);
         Main.checkClusters(clusters, testDataResultSet);
     }
@@ -273,7 +274,31 @@ public class Trainer {
         return result;
     }
 
-    private float[][] getHiddenAll(float[][] testData, CRBM[] crbm, IRBM[] irbm) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    private float[][] getHiddenAll(float[][] testData, CRBM[] crbms, IRBM[] irbms) {
+        float[][][] hidden1 = normalize(crbms[0].getHidden(testData, crbm1DataEdgeLength));
+
+        float[][][] maxPooled1 = maxPooling(hidden1, crbm1PoolingSize, crbm1DataEdgeLength, crbmFilterEdgeLength);
+        int crbm2MaxPooledDataEdgeLength = maxPoolEdgeCalc(crbm1PoolingSize, crbm1DataEdgeLength, crbmFilterEdgeLength);
+        float[][][] hidden2 = crbms[1].getHidden(maxPooled1, crbm2MaxPooledDataEdgeLength);
+        float[][][] maxPooled2 = maxPooling(hidden2, crbm2PoolingSize, crbm2MaxPooledDataEdgeLength, crbmFilterEdgeLength);
+         
+        float[][] rbmData = concatDataPartitions(maxPooled2);
+        
+        float[][] hidden = copyArray2D(rbmData);
+        
+        for (IRBM rbm : irbms) {
+            hidden = rbm.getHidden(hidden, true);
+        }
+        return hidden;
+    }
+    
+    private float[][] copyArray2D(float[][] arrays) {
+        float[][] result = new float[arrays.length][];
+        
+        for (int i = 0; i < arrays.length; i++) {
+            result[i] = Arrays.copyOf(arrays[i], arrays[i].length);
+        }
+        
+        return result;
     }
 }
