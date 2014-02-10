@@ -4,11 +4,15 @@ import crbm.rbm.IRBM;
 import crbm.rbm.RBMJBlasOpti;
 import crbm.rbm.StoppingCondition;
 import java.util.Arrays;
+import java.util.List;
 
 /**
  * Created by Radek on 08.02.14.
  */
 public class Trainer {
+    
+    private static final String trainingDataPath = "Data/MNIST_Small";
+    private static final String testDataPath = "Data/MNIST_Small";
     
     private final int K = 15;
     private final float learningRate = 0.01f;
@@ -26,12 +30,12 @@ public class Trainer {
 
     public void train() {
 
-        DataSet[] dataSet = Main.loadData();
-        float[][] data = Main.dataSetToArray(dataSet);
+        DataSet[] trainingDataSet = Main.loadData(trainingDataPath);
+        float[][] trainingData = Main.dataSetToArray(trainingDataSet);
 
         CRBM crbm1 = new CRBM(K, crbmFilterEdgeLength);
-        crbm1.train(data, crbm1DataEdgeLength, epochs, learningRate, "First-RBM");
-        float[][][] hidden1 = crbm1.getHidden(data, crbm1DataEdgeLength);
+        crbm1.train(trainingData, crbm1DataEdgeLength, epochs, learningRate, "First-RBM");
+        float[][][] hidden1 = crbm1.getHidden(trainingData, crbm1DataEdgeLength);
 
         Main.exportAsImage(reduceDimension(hidden1), "hidden1");
 
@@ -70,14 +74,23 @@ public class Trainer {
 
         Main.exportAsImage(visible1, "visible1");
         
-        // Use plain old RBM
-        
+        // Use plain old RBM        
         float[][] rbmData = concatDataPartitions(maxPooled2);
         
         IRBM rbm = new RBMJBlasOpti(rbmData[0].length, 100, learningRate, new DefaultLogisticMatrixFunction(), false, 0, null);
         rbm.train(rbmData,new StoppingCondition(epochs), false, false);
-        float[][] rbmResult = rbm.getHidden(rbmData, false);
+        float[][] trainingDataResult = rbm.getHidden(rbmData, false);
         
+        // Clustering
+        DataSet[] trainingDataResultSet = Main.arrayToDataSet(trainingDataResult, trainingDataSet);
+        List<Cluster> clusters = Main.generateClusters(trainingDataResultSet);
+        
+        // Check Clusters
+        DataSet[] testDataSet = Main.loadData(testDataPath);
+        float[][] testData = Main.dataSetToArray(testDataSet);
+        float[][] testDataResult = new float[][]{}; // Get Hidden on current RBMs
+        DataSet[] testDataResultSet = Main.arrayToDataSet(testDataResult, testDataSet);
+        Main.checkClusters(clusters, testDataResultSet);
     }
     
     private float[][] concatDataPartitions(float[][][] data){

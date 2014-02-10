@@ -7,7 +7,6 @@ import java.io.FilenameFilter;
 import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Random;
 import org.apache.commons.io.FileUtils;
 
 /**
@@ -16,7 +15,6 @@ import org.apache.commons.io.FileUtils;
 public class Main {
     
     private static final String exportPath = "export";
-    private static final String importPath = "Data/MNIST_Small";
     //private static final String importPath = "CRBM/Data/MNIST_Small";
     private static final int edgeLength = 28;
     private static final int padding = 2;
@@ -25,8 +23,6 @@ public class Main {
     private static final boolean invert = true;
     private static final float minData = 0.0f;
     private static final float maxData = 1.0f;
-    
-    private static final float maxClusterDistance = 20f;
 
     public static void main(String arg[]) {
         deleteOldExportData();
@@ -34,7 +30,7 @@ public class Main {
         trainer.train();
     }
 
-    public static DataSet[] loadData() {
+    public static DataSet[] loadData(String importPath) {
 
         File imageFolder = new File(importPath);
         final File[] imageFiles = imageFolder.listFiles(new FilenameFilter() {
@@ -104,7 +100,30 @@ public class Main {
         return result;
     }
     
-    public static float checkClusters(Cluster[] clusters, DataSet[] data){
+    public static List<Cluster> generateClusters(DataSet[] data){
+        List<Cluster> clusters = new LinkedList<Cluster>();
+        
+        for(DataSet ds : data){
+            boolean found = false;
+            String label = ds.getLabel();
+            for(Cluster c : clusters){
+                if(c.getLabel() == label){
+                    c.addVector(ds.getData());
+                    found = true;
+                    break;
+                }
+            }
+            if(!found){
+                Cluster c = new Cluster(label);
+                c.addVector(ds.getData());
+                clusters.add(c);
+            }
+        }
+        
+        return clusters;
+    }
+    
+    public static float checkClusters(List<Cluster> clusters, DataSet[] data){
         System.out.println("Check clusters");
         int wrongDecision = 0;
         for(DataSet ds : data){
