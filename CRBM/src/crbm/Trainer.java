@@ -17,7 +17,7 @@ public class Trainer {
     
     private final int K = 15;
     private final float learningRate = 0.01f;
-    private final int epochs = 100;
+    private final int epochs = 25;
 
     private final int crbmFilterEdgeLength = 5;
 
@@ -52,8 +52,8 @@ public class Trainer {
         // EXPORT END
 
         CRBM crbm2 = new CRBM(K, crbmFilterEdgeLength);
-        crbm2.train(reduceDimension(maxPooled1), crbm2MaxPooledDataEdgeLength, epochs, learningRate, "Second-RBM");
-        float[][][] hidden2 = crbm2.getHidden(reduceDimension(maxPooled1), crbm2MaxPooledDataEdgeLength);
+        crbm2.train(maxPooled1, crbm2MaxPooledDataEdgeLength, epochs, learningRate, "Second-RBM");
+        float[][][] hidden2 = crbm2.getHidden(maxPooled1, crbm2MaxPooledDataEdgeLength);
 
         // EXPORT
         exportAsImage(reduceDimension(hidden2), "hidden2");
@@ -68,17 +68,17 @@ public class Trainer {
         // EXPORT END
 
         CRBM crbm3 = new CRBM(K, crbmFilterEdgeLength);
-        crbm3.train(reduceDimension(hidden1), crbm2DataEdgeLength, epochs, learningRate, "Second-RBM");
-        float[][][] hidden3 = crbm3.getHidden(reduceDimension(hidden1), crbm2DataEdgeLength);
+        crbm3.train(hidden1, crbm2DataEdgeLength, epochs, learningRate, "Second-RBM");
+        float[][][] hidden3 = crbm2.getHidden(hidden1, crbm2DataEdgeLength);
 
         // EXPORT
         exportAsImage(reduceDimension(hidden3), "hidden3");
         // EXPORT END
 
-        float[][] visible2 = crbm3.getVisible(hidden3, null, crbm2DataEdgeLength);
-        exportAsImage(visible2, "visible2");
+        float[][][] visible2 = crbm3.getVisible2D(hidden3, null, crbm2DataEdgeLength);
+        exportAsImage(reduceDimension(visible2), "visible2");
 
-        float[][] visible1 = crbm1.getVisible(expandDimension(visible2, K), null, crbm2DataEdgeLength - crbmFilterEdgeLength + 1);
+        float[][] visible1 = crbm1.getVisible(visible2, null, crbm2DataEdgeLength - crbmFilterEdgeLength + 1);
 
         exportAsImage(visible1, "visible1");
     }
