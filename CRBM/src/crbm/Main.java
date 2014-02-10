@@ -119,6 +119,9 @@ public class Main {
                 clusters.add(c);
             }
         }
+        for(Cluster c : clusters){
+            c.init();
+        }
         
         return clusters;
     }
