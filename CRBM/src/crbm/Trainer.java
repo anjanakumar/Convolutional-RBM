@@ -88,7 +88,7 @@ public class Trainer {
         // Check Clusters
         DataSet[] testDataSet = Main.loadData(testDataPath);
         float[][] testData = Main.dataSetToArray(testDataSet);
-        float[][] testDataResult = new float[][]{}; // Get Hidden on current RBMs
+        float[][] testDataResult = getHiddenAll(testData, new CRBM[] {}, new IRBM[]{});
         DataSet[] testDataResultSet = Main.arrayToDataSet(testDataResult, testDataSet);
         Main.checkClusters(clusters, testDataResultSet);
     }
@@ -271,5 +271,9 @@ public class Trainer {
             result[i] = (data[i] - min)/range;   
         }
         return result;
+    }
+
+    private float[][] getHiddenAll(float[][] testData, CRBM[] crbm, IRBM[] irbm) {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 }

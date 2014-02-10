@@ -190,7 +190,7 @@ public class Main {
         new File(exportPath + "/" + name + "/").mkdirs();
 
         BufferedImage image = DataConverter.pixelDataToImage(data, 0.0f, false);
-        File outputfile = new File(exportPath + "/" + name + "/" + count + "/" + index + ".png");
+        File outputfile = new File(exportPath + "/" + name + "/" + count + "_" + index + ".png");
         try {
             ImageIO.write(image, "png", outputfile);
         } catch (IOException ex) {
