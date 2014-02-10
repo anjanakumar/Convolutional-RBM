@@ -91,11 +91,12 @@ public class Main {
         return result;
     }
     
-    public static DataSet[] arrayToDataSet(float[][] rbmData, DataSet[] originalData){
-        if(rbmData.length != originalData.length) return null;
-        DataSet[] result = new DataSet[rbmData.length];
-        for(int i = 0; i < rbmData.length; ++i){
-            result[i] = new DataSet(rbmData[i], originalData[i].getLabel());
+    public static DataSet[] arrayToDataSet(float[][] resultData, DataSet[] originalData){
+        //Length of result data must be equal to length of original data, eg. number of pics
+        if(resultData.length != originalData.length) return null;
+        DataSet[] result = new DataSet[resultData.length];
+        for(int i = 0; i < resultData.length; ++i){
+            result[i] = new DataSet(resultData[i], originalData[i].getLabel());
         }
         return result;
     }
