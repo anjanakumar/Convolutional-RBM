@@ -389,25 +389,16 @@ public class CRBM {
     }
 
     public float[][][] getVisible2D(float[][][] data, float[][] original, int dataEdgeLength) {
-        float[][][] result = new float[data.length][data[0].length][];
-
+        
+        int offset = filterEdgeLength - 1;
+        float[][][] result = new float[data.length][W.length][];
+        
+        
+        float[][] W1 = flip(W);
         for(int i = 0; i < data.length; i++) {
-            float[][] W1 = flip(W);
-            int offset = filterEdgeLength - 1;
             for (int k = 0; k < W1.length; k++) {
-                result[i][k] = logistic(filter(data[i], W1[k], dataEdgeLength - offset, this.filterEdgeLength, true));
-//                V1m = add(V1m, r);
+                result[i][k] = filter(data[i], W1[k], dataEdgeLength - offset, this.filterEdgeLength, true);
             }
-
-
-//
-//            addBias(V1m, b);
-//           float[] V1 = logistic(V1m);
-
-//            if(data != null) {
-//                V1 = concat(data[i], V1, dataEdgeLength, filterEdgeLength);
-//            }
-
         }
 
         return result;

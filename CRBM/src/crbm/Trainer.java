@@ -38,7 +38,7 @@ public class Trainer {
 
         CRBM crbm1 = new CRBM(K, crbmFilterEdgeLength);
         crbm1.train(data, crbm1DataEdgeLength, epochs, learningRate, "First-RBM");
-        float[][][] hidden1 = crbm1.getHidden(data, crbm1DataEdgeLength);
+        float[][][] hidden1 = normalize(crbm1.getHidden(data, crbm1DataEdgeLength));
 
         // EXPORT
         exportAsImage(reduceDimension(hidden1), "hidden1");
@@ -53,7 +53,7 @@ public class Trainer {
 
         CRBM crbm2 = new CRBM(K, crbmFilterEdgeLength);
         crbm2.train(maxPooled1, crbm2MaxPooledDataEdgeLength, epochs, learningRate, "Second-RBM");
-        float[][][] hidden2 = crbm2.getHidden(maxPooled1, crbm2MaxPooledDataEdgeLength);
+        float[][][] hidden2 = normalize(crbm2.getHidden(maxPooled1, crbm2MaxPooledDataEdgeLength));
 
         // EXPORT
         exportAsImage(reduceDimension(hidden2), "hidden2");
@@ -75,10 +75,10 @@ public class Trainer {
         exportAsImage(reduceDimension(hidden3), "hidden3");
         // EXPORT END
 
-        float[][][] visible2 = crbm3.getVisible2D(hidden3, null, crbm2DataEdgeLength);
+        float[][][] visible2 = normalize(crbm3.getVisible2D(hidden3, null, crbm2DataEdgeLength));
         exportAsImage(reduceDimension(visible2), "visible2");
 
-        float[][] visible1 = crbm1.getVisible(visible2, null, crbm2DataEdgeLength - crbmFilterEdgeLength + 1);
+        float[][] visible1 = normalize(crbm1.getVisible(visible2, null, crbm2DataEdgeLength - crbmFilterEdgeLength + 1));
 
         exportAsImage(visible1, "visible1");
     }
@@ -227,5 +227,43 @@ public class Trainer {
         } catch (IOException ex) {
             ex.printStackTrace();
         }
+    }
+    
+    
+    
+    private float[][][] normalize(float[][][] data) {
+        float[][][] result = new float[data.length][][];
+        
+        for (int i = 0; i < result.length; i++) {
+            result[i] = normalize(data[i]);        
+        }
+        return result;
+    }
+    
+    private float[][] normalize(float[][] data) {
+        float[][] result = new float[data.length][];
+        
+        for (int i = 0; i < result.length; i++) {
+            result[i] = normalize(data[i]);        
+        }
+        return result;
+    }
+    
+    private float[] normalize(float[] data) {
+        float[] result = new float[data.length];
+        
+        float max = Float.NEGATIVE_INFINITY;
+        float min = Float.POSITIVE_INFINITY;
+        
+        for (float f : data) {
+            if(f > max) max = f;
+            if(f < min) min = f;           
+        }
+        
+        float range = max - min;
+        for (int i = 0; i < data.length; i++) {
+            result[i] = (data[i] - min)/range;   
+        }
+        return result;
     }
 }

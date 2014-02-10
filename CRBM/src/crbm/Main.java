@@ -12,7 +12,7 @@ import java.util.Random;
 public class Main {
     
     //private static final String importPath = "Data/MNIST_Small";
-    private static final String importPath = "CRBM/Data/MNIST_Small";
+    private static final String importPath = "Data/MNIST_Small";
     private static final int edgeLength = 28;
     private static final int padding = 2;
     private static final boolean isRGB = false;
