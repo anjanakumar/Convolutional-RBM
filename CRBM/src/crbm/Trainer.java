@@ -35,7 +35,7 @@ public class Trainer {
 
         CRBM crbm1 = new CRBM(K, crbmFilterEdgeLength);
         crbm1.train(trainingData, crbm1DataEdgeLength, epochs, learningRate, "First-RBM");
-        float[][][] hidden1 = normalize(crbm1.getHidden(trainingData, crbm1DataEdgeLength));
+        float[][][] hidden1 = crbm1.getHidden(trainingData, crbm1DataEdgeLength);
 
         Main.exportAsImage(reduceDimension(hidden1), "hidden1", 0);
 
@@ -45,8 +45,8 @@ public class Trainer {
         Main.exportAsImage(reduceDimension(maxPooled1), "maxPooled1", 0);
 
         CRBM crbm2 = new CRBM(K, crbmFilterEdgeLength);
-        crbm2.train(maxPooled1, crbm2MaxPooledDataEdgeLength, epochs, learningRate, "Second-RBM");
-        float[][][] hidden2 = normalize(crbm2.getHidden(maxPooled1, crbm2MaxPooledDataEdgeLength));
+        crbm2.train3D(maxPooled1, crbm2MaxPooledDataEdgeLength, epochs, learningRate, "Second-RBM");
+        float[][][] hidden2 = crbm2.getHidden3D(maxPooled1, crbm2MaxPooledDataEdgeLength);
 
         Main.exportAsImage(reduceDimension(hidden2), "hidden2", 0);
 
@@ -55,26 +55,7 @@ public class Trainer {
         // reduce for export
         float[][] reducedMaxPooled2 = reduceDimension(maxPooled2);
         Main.exportAsImage(reducedMaxPooled2, "maxPooled2", 0);
-        
-        // End Training
-        // Reconstructions
-
-        CRBM crbm3 = new CRBM(K, crbmFilterEdgeLength);
-//        crbm3.train(hidden1, crbm2DataEdgeLength, epochs, learningRate, "Second-RBM");
-        float[][][] hidden3 = crbm2.getHidden(hidden1, crbm2DataEdgeLength);
-
-        // EXPORT
-        Main.exportAsImage(reduceDimension(hidden3), "hidden3", 0);
-        // EXPORT END
-
-        float[][][] visible2 = crbm3.getVisible2D(hidden3, null, crbm2DataEdgeLength);
-        Main.exportAsImage(visible2, "visible2");
-
-        float[][] visible1 = crbm1.getVisible(visible2, null, crbm2DataEdgeLength - crbmFilterEdgeLength + 1);
-
-        Main.exportAsImage(visible1, "visible1", 0);
-        
-        // Use plain old RBM        
+       
         float[][] rbmData = concatDataPartitions(maxPooled2);
         
         IRBM rbm = new RBMJBlasOpti(rbmData[0].length, 100, learningRate, new DefaultLogisticMatrixFunction(), false, 0, null);
@@ -232,54 +213,42 @@ public class Trainer {
                 }
             }
         }
+        
+        for(int i = 0; i < rEdgeLength; ++i){
+            for(int j = 0; j < rEdgeLength; ++j){
+                int pos = i * rEdgeLength + j;
+                boolean foundOnce = false;
+                boolean foundTwice = false;
+                int foundOncePosition = 0;
+                for(int k = 0; k < K; ++k){
+                    if(foundTwice){
+                        result[k][pos] = 0.0f;
+                    }else if(foundOnce){
+                        if(result[k][pos] > 0.5f){
+                            foundTwice = true;
+                            result[k][foundOncePosition] = 0.0f;
+                        }
+                        result[k][pos] = 0.0f;
+                    }else if(result[k][pos] > 0.5f){
+                        foundOnce = true;
+                        foundOncePosition = pos;
+                        result[k][pos] = 1.0f;
+                    }else{
+                        result[k][pos] = 0.0f;
+                    }
+                }
+            }
+        }
 
-        return result;
-    }
-    
-    
-    
-    private float[][][] normalize(float[][][] data) {
-        float[][][] result = new float[data.length][][];
-        
-        for (int i = 0; i < result.length; i++) {
-            result[i] = normalize(data[i]);        
-        }
-        return result;
-    }
-    
-    private float[][] normalize(float[][] data) {
-        float[][] result = new float[data.length][];
-        
-        for (int i = 0; i < result.length; i++) {
-            result[i] = normalize(data[i]);        
-        }
-        return result;
-    }
-    
-    private float[] normalize(float[] data) {
-        float[] result = new float[data.length];
-        
-        float max = Float.NEGATIVE_INFINITY;
-        float min = Float.POSITIVE_INFINITY;
-        
-        for (float f : data) {
-            if(f > max) max = f;
-            if(f < min) min = f;           
-        }
-        
-        float range = max - min;
-        for (int i = 0; i < data.length; i++) {
-            result[i] = (data[i] - min)/range;   
-        }
         return result;
     }
 
     private float[][] getHiddenAll(float[][] testData, CRBM[] crbms, IRBM[] irbms) {
-        float[][][] hidden1 = normalize(crbms[0].getHidden(testData, crbm1DataEdgeLength));
+        float[][][] hidden1 = crbms[0].getHidden(testData, crbm1DataEdgeLength);
 
         float[][][] maxPooled1 = maxPooling(hidden1, crbm1PoolingSize, crbm1DataEdgeLength, crbmFilterEdgeLength);
         int crbm2MaxPooledDataEdgeLength = maxPoolEdgeCalc(crbm1PoolingSize, crbm1DataEdgeLength, crbmFilterEdgeLength);
-        float[][][] hidden2 = crbms[1].getHidden(maxPooled1, crbm2MaxPooledDataEdgeLength);
+        float[][][] hidden2 = crbms[1].getHidden3D(maxPooled1, crbm2MaxPooledDataEdgeLength);
         float[][][] maxPooled2 = maxPooling(hidden2, crbm2PoolingSize, crbm2MaxPooledDataEdgeLength, crbmFilterEdgeLength);
          
         float[][] rbmData = concatDataPartitions(maxPooled2);

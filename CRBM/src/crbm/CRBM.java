@@ -22,13 +22,10 @@ import javax.imageio.ImageIO;
  */
 public class CRBM {
 
-    private final Random RANDOM = new Random();
+    private final Random random = new Random();
 
     private final float[][] W;
     private final int filterEdgeLength;
-
-    private float c_k = 0f;
-    private float b = 0f;
 
 
     public CRBM(int K, int filterEdgeLength) {
@@ -42,29 +39,28 @@ public class CRBM {
 
         for (int k = 0; k < K; k++) {
             for (int i = 0; i < filterDimensions; i++) {
-                result[k][i] = (float) (((RANDOM.nextDouble() - 0.5) * 2) / (filterEdgeLength * filterEdgeLength));
+                result[k][i] = (random.nextFloat() - 0.5f) * 2.0f;
             }
         }
         return result;
     }
 
-    public void train(float[][][] data, int dataEdgeLength, int epochs, float learningRate, String exportPath) {
+    public void train3D(float[][][] data, int dataEdgeLength, int epochs, float learningRate, String exportPath) {
 
         for (int e = 0; e < epochs; e++) {
             float error = 0;
             for (float[][] aData : data) {
-                error += train(aData, dataEdgeLength, learningRate);
+                error += train3D(aData, dataEdgeLength, learningRate);
             }
             error /= data.length;
             System.out.println(error);
         }
-        //killFirst();
 
         System.out.println("Training finished");
     }
 
     public void train(float[][] data, int dataEdgeLength, int epochs, float learningRate, String exportPath) {
-
+        
         for (int e = 0; e < epochs; e++) {
             float error = 0;
             for (float[] aData : data) {
@@ -73,18 +69,11 @@ public class CRBM {
             error /= data.length;
             System.out.println(error);
         }
-        //killFirst();
 
         System.out.println("Training finished");
     }
 
-    public void killFirst() {
-        for(int i = 0; i < W[0].length; i++) {
-            W[0][i] = 0;
-        }
-    }
-
-    private float train(float[][] data, int dataEdgeLength, float learningRate) {
+    private float train3D(float[][] data, int dataEdgeLength, float learningRate) {
         int offset = filterEdgeLength - 1;
         int K = W.length;
         float[][] W1;
@@ -92,14 +81,10 @@ public class CRBM {
         float[][] PH0_k = new float[K][];
         float[][] Grad0_k = new float[K][];
         float[][] H0_k = new float[K][];
-
+        
         for (int k = 0; k < K; k++) {
-            PH0_k[k] = filter(data, W[k], dataEdgeLength, filterEdgeLength, true);
-            if(k != 0) {
-                addBias(PH0_k[k], c_k);
-            }
-            PH0_k[k] = logistic(PH0_k[k]);
-            Grad0_k[k] = filter(data, PH0_k[k], dataEdgeLength, dataEdgeLength - offset, true);
+            PH0_k[k] = logistic(filter3D(data, W[k], dataEdgeLength, filterEdgeLength, true));
+            Grad0_k[k] = filter3D(data, PH0_k[k], dataEdgeLength, dataEdgeLength - offset, true);
             H0_k[k] = bernoulli(PH0_k[k]);
         }
 
@@ -107,27 +92,18 @@ public class CRBM {
 
         float[] V1m = new float[(dataEdgeLength - offset * 2) * (dataEdgeLength - offset * 2)];
         for (int k = 0; k < W1.length; k++) {
-            float[] r = filter(data, W1[k], dataEdgeLength - offset, this.filterEdgeLength, true);
+            float[] r = filter3D(data, W1[k], dataEdgeLength - offset, this.filterEdgeLength, true);
             V1m = add(V1m, r);
         }
 
-        addBias(V1m, b);
         float[] V1 = logistic(V1m);
-        if(data != null) {
-            V1 = concat(data, V1, dataEdgeLength, filterEdgeLength);
-        }
-
-        // float[] V1 = getVisible(H0_k, data, dataEdgeLength);
+        V1 = concat(data, V1, dataEdgeLength, filterEdgeLength);
 
         float[][] PH1_k = new float[K][];
         float[][] Grad1_k = new float[K][];
 
         for (int k = 0; k < K; k++) {
-            PH1_k[k] = filter(V1, W[k], dataEdgeLength, filterEdgeLength);
-            if(k != 0) {
-                addBias(PH0_k[k], c_k);
-            }
-            PH1_k[k] = logistic(PH1_k[k]);
+            PH1_k[k] = logistic(filter(V1, W[k], dataEdgeLength, filterEdgeLength));
             Grad1_k[k] = filter(V1, PH1_k[k], dataEdgeLength, dataEdgeLength - offset);
             W[k] = CD(W[k], Grad0_k[k], Grad1_k[k], learningRate);
         }
@@ -145,11 +121,7 @@ public class CRBM {
         float[][] H0_k = new float[K][];
 
         for (int k = 0; k < K; k++) {
-            PH0_k[k] = filter(data, W[k], dataEdgeLength, filterEdgeLength);
-            if(k != 0) {
-                addBias(PH0_k[k], c_k);
-            }
-            PH0_k[k] = logistic(PH0_k[k]);
+            PH0_k[k] = logistic(filter(data, W[k], dataEdgeLength, filterEdgeLength));
             Grad0_k[k] = filter(data, PH0_k[k], dataEdgeLength, dataEdgeLength - offset);
             H0_k[k] = bernoulli(PH0_k[k]);
         }
@@ -160,11 +132,7 @@ public class CRBM {
         float[][] Grad1_k = new float[K][];
 
         for (int k = 0; k < K; k++) {
-            PH1_k[k] = filter(V1, W[k], dataEdgeLength, filterEdgeLength);
-            if(k != 0) {
-                addBias(PH0_k[k], c_k);
-            }
-            PH1_k[k] = logistic(PH1_k[k]);
+            PH1_k[k] = logistic(filter(V1, W[k], dataEdgeLength, filterEdgeLength));
             Grad1_k[k] = filter(V1, PH1_k[k], dataEdgeLength, dataEdgeLength - offset);
             W[k] = CD(W[k], Grad0_k[k], Grad1_k[k], learningRate);
         }
@@ -199,7 +167,7 @@ public class CRBM {
         return r;
     }
 
-    private float[] filter(float[][] data, float[] filter, int dataEdgeLength, int filterEdgeLength, boolean normalize) {
+    private float[] filter3D(float[][] data, float[] filter, int dataEdgeLength, int filterEdgeLength, boolean normalize) {
         int offset = filterEdgeLength - 1;
         final int rEdgeLength = dataEdgeLength - offset;
 
@@ -218,10 +186,6 @@ public class CRBM {
                         }
                     }
                 }
-                if(normalize) {
-                    sum /= (float)data.length;
-                }
-
                 r[y * rEdgeLength + x] = sum;
             }
         }
@@ -242,7 +206,7 @@ public class CRBM {
         float[] r = new float[data.length];
 
         for (int i = 0; i < data.length; i++) {
-            r[i] = (data[i] > RANDOM.nextDouble()) ? 1 : 0;
+            r[i] = (data[i] > random.nextDouble()) ? 1 : 0;
         }
 
         return r;
@@ -332,15 +296,15 @@ public class CRBM {
         return result;
     }
 
-    public float[][][] getHidden(float[][][] data, int dataEdgeLength) {
+    public float[][][] getHidden3D(float[][][] data, int dataEdgeLength) {
         float[][][] result = new float[data.length][][];
         for (int i = 0; i < data.length; i++) {
-            result[i] = getHidden2D(data[i], dataEdgeLength);
+            result[i] = getHidden3D(data[i], dataEdgeLength);
         }
         return result;
     }
 
-    public float[][] getHidden2D(float[][] data, int dataEdgeLength) {
+    public float[][] getHidden3D(float[][] data, int dataEdgeLength) {
         int offset = filterEdgeLength - 1;
         int K = W.length;
         float[][] W1;
@@ -350,12 +314,8 @@ public class CRBM {
         float[][] H0_k = new float[K][];
 
         for (int k = 0; k < K; k++) {
-            PH0_k[k] = filter(data, W[k], dataEdgeLength, filterEdgeLength, true);
-            if(k != 0) {
-                addBias(PH0_k[k], c_k);
-            }
-            PH0_k[k] = logistic(PH0_k[k]);
-            Grad0_k[k] = filter(data, PH0_k[k], dataEdgeLength, dataEdgeLength - offset, true);
+            PH0_k[k] = logistic(filter3D(data, W[k], dataEdgeLength, filterEdgeLength, true));
+            Grad0_k[k] = filter3D(data, PH0_k[k], dataEdgeLength, dataEdgeLength - offset, true);
             H0_k[k] = bernoulli(PH0_k[k]);
         }
 
@@ -376,11 +336,7 @@ public class CRBM {
         float[][] H0_k = new float[W.length][];
 
         for (int k = 0; k < W.length; k++) {
-            PH0_k[k] = filter(data, W[k], dataEdgeLength, filterEdgeLength);
-            if(k != 0) {
-                addBias(PH0_k[k], c_k);
-            }
-            PH0_k[k] = logistic(PH0_k[k]);
+            PH0_k[k] = logistic(filter(data, W[k], dataEdgeLength, filterEdgeLength));
             H0_k[k] = bernoulli(PH0_k[k]);
         }
         return PH0_k;
@@ -395,7 +351,7 @@ public class CRBM {
         float[][] W1 = flip(W);
         for(int i = 0; i < data.length; i++) {
             for (int k = 0; k < W1.length; k++) {
-                result[i][k] = filter(data[i], W1[k], dataEdgeLength - offset, this.filterEdgeLength, true);
+                result[i][k] = filter3D(data[i], W1[k], dataEdgeLength - offset, this.filterEdgeLength, true);
             }
         }
 
@@ -423,59 +379,12 @@ public class CRBM {
             float[] r = filter(data[k], W1[k], dataEdgeLength - offset, this.filterEdgeLength);
             V1m = add(V1m, r);
         }
-
-        addBias(V1m, b);
+        
         float[] V1 = logistic(V1m);
-        if(original != null) {
-            V1 = concat(original, V1, dataEdgeLength, filterEdgeLength);
-        }
+        V1 = concat(original, V1, dataEdgeLength, filterEdgeLength);
 
-        //
         return V1;
     }
-
-    private void addBias(float[] r, float bias) {
-        for(int i = 0; i < r.length; i++) {
-            r[i] += bias;
-        }
-    }
-
-//    private void exportAsImage(float[][] data, String name, int count) {
-//        for (int k = 0; k < data.length; k++) {
-//            exportAsImage(data[k], name, count, k);
-//        }
-//    }
-    
-//    private void exportAsImage(float[] data, String name, int count){
-//        exportAsImage(data, name, count, 0);
-//    }
-    
-//    private void exportAsImage(float[] data, String name, int count, int k) {
-//        new File(EXPORT_PATH + "/" + name + "/").mkdirs();
-//
-//        BufferedImage image = DataConverter.pixelDataToImage(data, 0.0f, false);
-//        File outputfile = new File(EXPORT_PATH + "/" + name + "/" + count + "_" + k + ".png");
-//        try {
-//            ImageIO.write(image, "png", outputfile);
-//        } catch (IOException ex) {
-//            Logger.getLogger(CRBM.class.getName()).log(Level.SEVERE, null, ex);
-//        }
-//    }
-
-//    private void print(float[][] W_k) {
-//
-//        for (int k = 0; k < K; k++) {
-//            System.out.println("K:" + k);
-//            for (int i = 0; i < FILTEREDGELENGTH; i++) {
-//                for (int j = 0; j < FILTEREDGELENGTH; j++) {
-//                    System.out.print(W_k[k][i * FILTEREDGELENGTH + j] + " ");
-//                }
-//                System.out.println();
-//            }
-//            System.out.println();
-//        }
-//
-//    }
 
     private void exportAsImage(float[][] data, String name) {
 
