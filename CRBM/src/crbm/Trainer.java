@@ -1,14 +1,13 @@
 package crbm;
 
-import crbm.rbm.IRBM;
-import crbm.rbm.RBMJBlasOpti;
-import crbm.rbm.StoppingCondition;
 import java.util.Arrays;
 import java.util.List;
 
 public class Trainer {
 
+    // data for training
     private static final String trainingDataPath = "CRBM/Data/MNIST_1000_Database";
+    // data for testing the generated clusters
     private static final String testDataPath = "CRBM/Data/MNIST_1000_Database";
 
     // number of filters first CRBM
@@ -25,12 +24,6 @@ public class Trainer {
     private final int crbm1DataEdgeLength = 32;
     // max pooling size after first CRBM
     private final int crbm1PoolingSize = 2;
-    // data input size for second CRBM
-    private final int crbm2DataEdgeLength = crbm1DataEdgeLength - crbmFilterEdgeLength + 1;
-    // max pooling size after second CRBM
-    private final int crbm2PoolingSize = 2;
-    // number of output nodes for plain old rbm at the end of the CRBM stack
-    private final int rbmOutputSize = 30;
 
     public void train() {
 
@@ -81,22 +74,12 @@ public class Trainer {
 
         }
 
-
-        /*
-        // Use plain old RBM        
-        float[][] rbmData = concatDataPartitions(hiddenMaxPooled1);
-
-        IRBM rbm = new RBMJBlasOpti(rbmData[0].length, 100, learningRate, new DefaultLogisticMatrixFunction(), false, 0, null);
-        rbm.train(rbmData,new StoppingCondition(2000), false, false);
-        float[][] trainingDataResult = rbm.getHidden(rbmData, false);
-        */
-
-        // Clustering
+        // clustering with training data
         DataSet[] trainingDataResultSet = Main.arrayToDataSet(perceptron, trainingDataSet);
         List<Cluster> clusters = Main.generateClusters(trainingDataResultSet);
         Main.printClusters(clusters);
         
-        // Check Clusters and print results
+        // check clusters with test data and print results
         DataSet[] testDataSet = Main.loadData(testDataPath);
         float[][] testData = Main.dataSetToArray(testDataSet);
         float[][] testDataResult = getHiddenAll(testData, new CRBM[] {crbm1,crbm2});
@@ -104,6 +87,11 @@ public class Trainer {
         Main.checkClusters(clusters, testDataResultSet);
     }
 
+    /**
+     * generates data feature vector matrix from multidimensional input
+     * @param data
+     * @return 
+     */
     private float[][] concatDataPartitions(float[][][] data){
         float[][] result = new float[data.length][data[0].length * data[0][0].length];
 
@@ -118,6 +106,16 @@ public class Trainer {
         return result;
     }
 
+    /**
+     * nearest neighbour function is used by max pooling
+     * when the data is not dividable by the max pooling size
+     * @param pixels
+     * @param actualWidth
+     * @param actualHeight
+     * @param newWidth
+     * @param newHeight
+     * @return 
+     */
     public float[] nearestNeighbour(float[] pixels, int actualWidth, int actualHeight, int newWidth, int newHeight) {
 
         float[] result = new float[newWidth * newHeight];
@@ -136,6 +134,14 @@ public class Trainer {
         return result;
     }
 
+    /**
+     * calls the real max pooling function
+     * @param data
+     * @param poolingSize
+     * @param dataEdgeLength
+     * @param filterEdgeLength
+     * @return 
+     */
     private float[][][][] maxPooling(float[][][][] data, int poolingSize, int dataEdgeLength ,int filterEdgeLength) {
         float[][][][] result = new float[data.length][][][];
 
@@ -146,6 +152,14 @@ public class Trainer {
         return result;
     }
 
+    /**
+     * calls the real max pooling function
+     * @param data
+     * @param poolingSize
+     * @param dataEdgeLength
+     * @param filterEdgeLength
+     * @return 
+     */
     private float[][][] maxPooling(float[][][] data, int poolingSize, int dataEdgeLength ,int filterEdgeLength) {
         float[][][] result = new float[data.length][][];
 
@@ -156,6 +170,13 @@ public class Trainer {
         return result;
     }
 
+    /**
+     * calculates the size of the data matrix after max pooling
+     * @param poolingSize
+     * @param dataEdgeLength
+     * @param filterEdgeLength
+     * @return 
+     */
     private int maxPoolEdgeCalc(int poolingSize, int dataEdgeLength, int filterEdgeLength){
 
         int offset = filterEdgeLength-1;
@@ -168,6 +189,15 @@ public class Trainer {
         return pEdgeLength / poolingSize;
     }
 
+    /**
+     * max pooling reduces data matrix by a given factor poolingSize
+     * picks only the max value in a pooling neighbourhood
+     * @param data
+     * @param poolingSize
+     * @param dataEdgeLength
+     * @param filterEdgeLength
+     * @return 
+     */
     private float[][] maxPooling(float[][] data, int poolingSize, int dataEdgeLength ,int filterEdgeLength) {
         int offset = filterEdgeLength-1;
         int pEdgeLength = dataEdgeLength - offset;
@@ -213,44 +243,7 @@ public class Trainer {
         return result;
     }
 
-
-
-    private float[][][] normalize(float[][][] data) {
-        float[][][] result = new float[data.length][][];
-
-        for (int i = 0; i < result.length; i++) {
-            result[i] = normalize(data[i]);
-        }
-        return result;
-    }
-
-    private float[][] normalize(float[][] data) {
-        float[][] result = new float[data.length][];
-
-        for (int i = 0; i < result.length; i++) {
-            result[i] = normalize(data[i]);
-        }
-        return result;
-    }
-
-    private float[] normalize(float[] data) {
-        float[] result = new float[data.length];
-
-        float max = Float.NEGATIVE_INFINITY;
-        float min = Float.POSITIVE_INFINITY;
-
-        for (float f : data) {
-            if(f > max) max = f;
-            if(f < min) min = f;
-        }
-
-        float range = max - min;
-        for (int i = 0; i < data.length; i++) {
-            result[i] = (data[i] - min)/range;
-        }
-        return result;
-    }
-
+    // get hidden function for the complete CRBM stack
     private float[][] getHiddenAll(float[][] testData, CRBM[] crbms) {
         float[][][] hidden1 = crbms[0].getHidden(testData);
 
@@ -277,15 +270,5 @@ public class Trainer {
         }
 
         return perceptron;
-    }
-
-    private float[][] copyArray2D(float[][] arrays) {
-        float[][] result = new float[arrays.length][];
-
-        for (int i = 0; i < arrays.length; i++) {
-            result[i] = Arrays.copyOf(arrays[i], arrays[i].length);
-        }
-
-        return result;
     }
 }
