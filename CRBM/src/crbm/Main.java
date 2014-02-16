@@ -9,9 +9,6 @@ import java.util.LinkedList;
 import java.util.List;
 import org.apache.commons.io.FileUtils;
 
-/**
- * Created by Radek on 08.02.14.
- */
 public class Main {
 
     private static final String importPath = "Data/MNIST_Small";
@@ -31,6 +28,11 @@ public class Main {
         trainer.train();
     }
 
+    /**
+     * loads the image data from a directory and converts into a data structure
+     * @param importPath
+     * @return 
+     */
     public static DataSet[] loadData(String importPath) {
 
         File imageFolder = new File(importPath);
@@ -71,6 +73,14 @@ public class Main {
         return result;
     }
 
+    /**
+     * adds a padding to the training images, so that the filtered image
+     * has the original size
+     * @param data
+     * @param dataEdgeLength
+     * @param padding
+     * @return 
+     */
     private static float[] pad(float[] data, int dataEdgeLength, int padding) {
         int newEdgeLength = dataEdgeLength + padding * 2;
         float[] result = new float[newEdgeLength * newEdgeLength];
@@ -104,6 +114,13 @@ public class Main {
         return result;
     }
 
+    /**
+     * Generates clusters from the hidden layer result of the last rbm
+     * It uses training data labels to put all data from one category into one cluster
+     * The cluster center is the mean value of the data in the cluster
+     * @param data
+     * @return
+     */
     public static List<Cluster> generateClusters(DataSet[] data) {
         List<Cluster> clusters = new LinkedList<Cluster>();
 
@@ -130,6 +147,13 @@ public class Main {
         return clusters;
     }
 
+    /**
+     * Checks if the test data is set to the right cluster
+     * e.g apples should be set to the apple labeled cluster
+     * @param clusters
+     * @param data
+     * @return 
+     */
     public static float checkClusters(List<Cluster> clusters, DataSet[] data) {
         System.out.println("Check clusters");
         int wrongDecision = 0;

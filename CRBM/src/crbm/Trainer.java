@@ -6,55 +6,65 @@ import crbm.rbm.StoppingCondition;
 import java.util.Arrays;
 import java.util.List;
 
-/**
- * Created by Radek on 08.02.14.
- */
 public class Trainer {
 
     private static final String trainingDataPath = "CRBM/Data/MNIST_1000_Database";
     private static final String testDataPath = "CRBM/Data/MNIST_1000_Database";
 
-
+    // number of filters first CRBM
     private final int K1 = 15;
+    // number of filters second CRBM
     private final int K2 = 15;
+    // learning rate for updating weights
     private final float learningRate = 0.01f;
+    // number of training epochs
     private final int epochs = 3;
-
+    // filter size CRBM
     private final int crbmFilterEdgeLength = 5;
-
+    // data input size for first CRBM
     private final int crbm1DataEdgeLength = 32;
+    // max pooling size after first CRBM
     private final int crbm1PoolingSize = 2;
-
+    // data input size for second CRBM
     private final int crbm2DataEdgeLength = crbm1DataEdgeLength - crbmFilterEdgeLength + 1;
+    // max pooling size after second CRBM
     private final int crbm2PoolingSize = 2;
-
+    // number of output nodes for plain old rbm at the end of the CRBM stack
     private final int rbmOutputSize = 30;
 
     public void train() {
 
         DataSet[] trainingDataSet = Main.loadData(trainingDataPath);
         float[][] trainingData = Main.dataSetToArray(trainingDataSet);
-
+        
+        // generate and train first CRBM
         CRBM crbm1 = new CRBM(K1, crbmFilterEdgeLength, crbm1DataEdgeLength);
         crbm1.train(trainingData, epochs, learningRate);
+        // get hidden propabilities for next CRBM input
         float[][][] hidden1 = crbm1.getHidden(trainingData);
 
         Main.exportAsImage(hidden1, "hidden1");
 
+        // max pooling probabilities
         float[][][] hiddenMaxPooled1 = maxPooling(hidden1, crbm1PoolingSize, crbm1DataEdgeLength, crbmFilterEdgeLength);
 
         Main.exportAsImage(hiddenMaxPooled1, "hiddenMaxPooled1");
 
+        // generate and train second CRBM
         CRBM crbm2 = new CRBM(K2, crbmFilterEdgeLength, crbm1.getDataEdgeLength(hiddenMaxPooled1[0][0]));
         crbm2.train(hiddenMaxPooled1, epochs, learningRate);
+        
+        // get hidden probabilies
         float[][][][] hidden2 = crbm2.getHidden(hiddenMaxPooled1);
 
         Main.exportAsImage(hidden2, "hidden2");
 
+        // max pooling probabilities
         float[][][][] hiddenMaxPooled2 = maxPooling(hidden2, crbm1PoolingSize, 5, crbmFilterEdgeLength);
 
         Main.exportAsImage(hiddenMaxPooled2, "hiddenMaxPooled2");
 
+        // generate feature vectors for each image from multidimensional data
         float[][] perceptron = new float[hiddenMaxPooled2.length][hiddenMaxPooled2[0].length * hiddenMaxPooled2[0].length];
 
         for(int i = 0; i < hiddenMaxPooled2.length; i++) {
@@ -86,7 +96,7 @@ public class Trainer {
         List<Cluster> clusters = Main.generateClusters(trainingDataResultSet);
         Main.printClusters(clusters);
         
-        // Check Clusters
+        // Check Clusters and print results
         DataSet[] testDataSet = Main.loadData(testDataPath);
         float[][] testData = Main.dataSetToArray(testDataSet);
         float[][] testDataResult = getHiddenAll(testData, new CRBM[] {crbm1,crbm2});
