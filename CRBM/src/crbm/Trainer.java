@@ -6,9 +6,9 @@ import java.util.List;
 public class Trainer {
 
     // data for training
-    private static final String trainingDataPath = "CRBM/Data/MNIST_1000_Database";
+    private static final String trainingDataPath = "Data/MNIST_1000_Database";
     // data for testing the generated clusters
-    private static final String testDataPath = "CRBM/Data/MNIST_1000_Database";
+    private static final String testDataPath = "Data/MNIST_1000_Database";
 
     // number of filters first CRBM
     private final int K1 = 15;

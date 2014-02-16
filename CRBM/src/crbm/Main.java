@@ -5,13 +5,16 @@ import javax.imageio.ImageIO;
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 import org.apache.commons.io.FileUtils;
 
 public class Main {
-
-    private static final String importPath = "Data/MNIST_Small";
 
     private static final String exportPath = "export";
     private static final int edgeLength = 28;
@@ -156,26 +159,40 @@ public class Main {
      */
     public static float checkClusters(List<Cluster> clusters, DataSet[] data) {
         System.out.println("Check clusters");
+        int numberOfClusters = clusters.size();
+        int rank = 0;
         int wrongDecision = 0;
         for (DataSet ds : data) {
+            HashMap<String, Float> clusterDistances = new HashMap<String, Float>();
             float[] d = ds.getData();
-            float bestClusterDistance = Float.MAX_VALUE;
-            String bestClusterLabel = "foobar";
             for (Cluster c : clusters) {
+                String label = c.getLabel();
                 float clusterDistance = c.distanceToCenter(d);
-                if (clusterDistance < bestClusterDistance) {
-                    bestClusterDistance = clusterDistance;
-                    bestClusterLabel = c.getLabel();
-                }
+                clusterDistances.put(label, clusterDistance);
             }
+            ValueComparator valueComp = new ValueComparator(clusterDistances);
+            TreeMap<String, Float> sortedDistances = new TreeMap<String, Float>(valueComp);
             String realLabel = ds.getLabel();
+            String bestClusterLabel = sortedDistances.lastEntry().getKey();
+            int pos = 0;
+            for (String key : sortedDistances.keySet()) {
+                ++pos;
+                if(key.equals(realLabel)) break;
+            }
+            rank += pos;
             if (!(bestClusterLabel.equals(realLabel))) {
                 ++wrongDecision;
                 System.out.println("Found " + bestClusterLabel + " instead of " + realLabel);
             }
         }
+        
+        float meanRank = (float)(rank) / data.length;
         float error = (float) wrongDecision / data.length;
+        float overallCorrectRate = (float)(data.length - wrongDecision) / data.length;
+        
+        System.out.println("Mean Rank: " + meanRank + " / " + data.length);
         System.out.println("Wrong: " + wrongDecision + " / " + data.length + ", Error: " + error);
+        System.out.println("Right: " + (data.length - wrongDecision) + " / " + data.length + ", OverallCorrectRate: " + overallCorrectRate);
 
         return error;
     }
@@ -232,5 +249,25 @@ public class Main {
         } catch (IOException ex) {
             ex.printStackTrace();
         }
+    }  
+}
+
+/**
+* code from http://stackoverflow.com/a/1283722
+*/
+class ValueComparator implements Comparator<String> {
+
+    Map<String, Float> base;
+    public ValueComparator(Map<String, Float> base) {
+        this.base = base;
+    }
+
+    // Note: this comparator imposes orderings that are inconsistent with equals.    
+    public int compare(String a, String b) {
+        if (base.get(a) >= base.get(b)) {
+            return -1;
+        } else {
+            return 1;
+        } // returning 0 would merge keys
     }
 }
