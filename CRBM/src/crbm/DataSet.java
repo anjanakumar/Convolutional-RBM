@@ -6,10 +6,6 @@
 
 package crbm;
 
-/**
- *
- * @author christoph
- */
 public class DataSet {
     private final float[] data;
     private final String label;

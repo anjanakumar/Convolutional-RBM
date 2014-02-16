@@ -4,10 +4,6 @@ import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
-/**
- *
- * @author christoph
- */
 public class Cluster {
        
     private final String label;

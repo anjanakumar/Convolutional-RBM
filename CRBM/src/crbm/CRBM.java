@@ -578,7 +578,7 @@ public class CRBM {
      */
     private void add(float[][] data1, float[][] data2) {
         for (int i = 0; i < data1.length; i++) {
-            add(data1[i], data2);
+            add(data1[i], data2[i]);
         }
     }
 

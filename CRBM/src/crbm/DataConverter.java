@@ -4,12 +4,6 @@ package crbm;
 import java.awt.image.BufferedImage;
 
 
-
-/**
- * DataConverter
- *
- * @author Radek
- */
 public class DataConverter {
 	
 	public static float[] processPixelData(BufferedImage image, int edgeLength, boolean binarize, boolean invert, float minData, float maxData, boolean isRgb) {
