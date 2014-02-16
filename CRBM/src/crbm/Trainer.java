@@ -10,13 +10,15 @@ import java.util.List;
  * Created by Radek on 08.02.14.
  */
 public class Trainer {
-    
-    private static final String trainingDataPath = "Data/MNIST_Small";
-    private static final String testDataPath = "Data/MNIST_Small";
-    
-    private final int K = 15;
+
+    private static final String trainingDataPath = "CRBM/Data/MNIST_1000_Database";
+    private static final String testDataPath = "CRBM/Data/MNIST_1000_Database";
+
+
+    private final int K1 = 15;
+    private final int K2 = 15;
     private final float learningRate = 0.01f;
-    private final int epochs = 100;
+    private final int epochs = 3;
 
     private final int crbmFilterEdgeLength = 5;
 
@@ -25,7 +27,7 @@ public class Trainer {
 
     private final int crbm2DataEdgeLength = crbm1DataEdgeLength - crbmFilterEdgeLength + 1;
     private final int crbm2PoolingSize = 2;
-    
+
     private final int rbmOutputSize = 30;
 
     public void train() {
@@ -33,119 +35,74 @@ public class Trainer {
         DataSet[] trainingDataSet = Main.loadData(trainingDataPath);
         float[][] trainingData = Main.dataSetToArray(trainingDataSet);
 
-        CRBM crbm1 = new CRBM(K, crbmFilterEdgeLength);
-        crbm1.train(trainingData, crbm1DataEdgeLength, epochs, learningRate, "First-RBM");
-        float[][][] hidden1 = normalize(crbm1.getHidden(trainingData, crbm1DataEdgeLength));
+        CRBM crbm1 = new CRBM(K1, crbmFilterEdgeLength, crbm1DataEdgeLength);
+        crbm1.train(trainingData, epochs, learningRate);
+        float[][][] hidden1 = crbm1.getHidden(trainingData);
 
-        Main.exportAsImage(reduceDimension(hidden1), "hidden1", 0);
+        Main.exportAsImage(hidden1, "hidden1");
 
-        float[][][] maxPooled1 = maxPooling(hidden1, crbm1PoolingSize, crbm1DataEdgeLength, crbmFilterEdgeLength);
-        int crbm2MaxPooledDataEdgeLength = maxPoolEdgeCalc(crbm1PoolingSize, crbm1DataEdgeLength, crbmFilterEdgeLength);
+        float[][][] hiddenMaxPooled1 = maxPooling(hidden1, crbm1PoolingSize, crbm1DataEdgeLength, crbmFilterEdgeLength);
 
-        Main.exportAsImage(reduceDimension(maxPooled1), "maxPooled1", 0);
+        Main.exportAsImage(hiddenMaxPooled1, "hiddenMaxPooled1");
 
-        CRBM crbm2 = new CRBM(K, crbmFilterEdgeLength);
-        crbm2.train(maxPooled1, crbm2MaxPooledDataEdgeLength, epochs, learningRate, "Second-RBM");
-        float[][][] hidden2 = normalize(crbm2.getHidden(maxPooled1, crbm2MaxPooledDataEdgeLength));
+        CRBM crbm2 = new CRBM(K2, crbmFilterEdgeLength, crbm1.getDataEdgeLength(hiddenMaxPooled1[0][0]));
+        crbm2.train(hiddenMaxPooled1, epochs, learningRate);
+        float[][][][] hidden2 = crbm2.getHidden(hiddenMaxPooled1);
 
-        Main.exportAsImage(reduceDimension(hidden2), "hidden2", 0);
+        Main.exportAsImage(hidden2, "hidden2");
 
-        float[][][] maxPooled2 = maxPooling(hidden2, crbm2PoolingSize, crbm2MaxPooledDataEdgeLength, crbmFilterEdgeLength);
+        float[][][][] hiddenMaxPooled2 = maxPooling(hidden2, crbm1PoolingSize, 5, crbmFilterEdgeLength);
 
-        // reduce for export
-        float[][] reducedMaxPooled2 = reduceDimension(maxPooled2);
-        Main.exportAsImage(reducedMaxPooled2, "maxPooled2", 0);
-        
-        // End Training
-        // Reconstructions
+        Main.exportAsImage(hiddenMaxPooled2, "hiddenMaxPooled2");
 
-        CRBM crbm3 = new CRBM(K, crbmFilterEdgeLength);
-//        crbm3.train(hidden1, crbm2DataEdgeLength, epochs, learningRate, "Second-RBM");
-        float[][][] hidden3 = crbm2.getHidden(hidden1, crbm2DataEdgeLength);
+        float[][] perceptron = new float[hiddenMaxPooled2.length][hiddenMaxPooled2[0].length * hiddenMaxPooled2[0].length];
 
-        // EXPORT
-        Main.exportAsImage(reduceDimension(hidden3), "hidden3", 0);
-        // EXPORT END
+        for(int i = 0; i < hiddenMaxPooled2.length; i++) {
 
-        float[][][] visible2 = crbm3.getVisible2D(hidden3, null, crbm2DataEdgeLength);
-        Main.exportAsImage(visible2, "visible2");
+            for(int pos = 0, k = 0; k < hiddenMaxPooled2[0].length; k++) {
 
-        float[][] visible1 = crbm1.getVisible(visible2, null, crbm2DataEdgeLength - crbmFilterEdgeLength + 1);
+                for(int kBefore = 0; kBefore < hiddenMaxPooled2[0][0].length; kBefore++, pos++) {
 
-        Main.exportAsImage(visible1, "visible1", 0);
-        
+                    perceptron[i][pos] = hiddenMaxPooled2[i][k][kBefore][0];
+
+                }
+
+            }
+
+        }
+
+
+        /*
         // Use plain old RBM        
-        float[][] rbmData = concatDataPartitions(maxPooled2);
-        
+        float[][] rbmData = concatDataPartitions(hiddenMaxPooled1);
+
         IRBM rbm = new RBMJBlasOpti(rbmData[0].length, 100, learningRate, new DefaultLogisticMatrixFunction(), false, 0, null);
         rbm.train(rbmData,new StoppingCondition(2000), false, false);
         float[][] trainingDataResult = rbm.getHidden(rbmData, false);
-        
+        */
+
         // Clustering
-        DataSet[] trainingDataResultSet = Main.arrayToDataSet(trainingDataResult, trainingDataSet);
+        DataSet[] trainingDataResultSet = Main.arrayToDataSet(perceptron, trainingDataSet);
         List<Cluster> clusters = Main.generateClusters(trainingDataResultSet);
         Main.printClusters(clusters);
         
         // Check Clusters
         DataSet[] testDataSet = Main.loadData(testDataPath);
         float[][] testData = Main.dataSetToArray(testDataSet);
-        float[][] testDataResult = getHiddenAll(testData, new CRBM[] {crbm1, crbm2}, new IRBM[]{rbm});
-        DataSet[] testDataResultSet = Main.arrayToDataSet(testDataResult, testDataSet);
+        float[][] testDataResult = getHiddenAll(testData, new CRBM[] {crbm1,crbm2});
+        DataSet[] testDataResultSet = Main.arrayToDataSet(perceptron, testDataSet);
         Main.checkClusters(clusters, testDataResultSet);
     }
-    
+
     private float[][] concatDataPartitions(float[][][] data){
         float[][] result = new float[data.length][data[0].length * data[0][0].length];
-        
+
         for(int i = 0; i < data.length; ++i){
             for(int j = 0; j < data[0].length; ++j){
                 for(int k = 0; k < data[0][0].length; ++k){
                     result[i][j * data[0][0].length + k] = data[i][j][k];
                 }
             }
-        }
-        
-        return result;
-    }
-
-    float[][][] expandDimension(float[][] data, int nextDimensionSize) {
-        float[][][] result = new float[data.length / nextDimensionSize][nextDimensionSize][data[0].length];
-
-        for(int i = 0; i < result.length; i++) {
-            for(int j = 0; j < result[0].length; j++) {
-                for(int k = 0; k < result[0][0].length; k++) {
-                    result[i][j][k] = data[i * result[0].length + j][k];
-                }
-            }
-        }
-        return result;
-    }
-
-    float[][] reduceDimension(float[][][] data) {
-        float[][] result = new float[data.length * data[0].length][];
-
-        for(int i = 0; i < data.length; i++) {
-            for(int j = 0; j < data[0].length; j++){
-                result[i * data[0].length + j] = data[i][j];
-            }
-        }
-        return result;
-    }
-
-    public float[][][] nearestNeighbour(float[][][] pixels, int actualWidth, int actualHeight, int newWidth, int newHeight) {
-        float[][][] result = new float[pixels.length][pixels[0].length][];
-        for(int i = 0; i < pixels.length; i++) {
-            result[i] = nearestNeighbour(pixels[i], actualWidth, actualHeight, newWidth, newHeight);
-        }
-
-        return result;
-    }
-
-    public float[][] nearestNeighbour(float[][] pixels, int actualWidth, int actualHeight, int newWidth, int newHeight) {
-        float[][] result = new float[pixels.length][];
-
-        for(int i = 0; i < pixels.length; i++) {
-            result[i] = nearestNeighbour(pixels[i], actualWidth, actualHeight, newWidth, newHeight);
         }
 
         return result;
@@ -169,8 +126,18 @@ public class Trainer {
         return result;
     }
 
+    private float[][][][] maxPooling(float[][][][] data, int poolingSize, int dataEdgeLength ,int filterEdgeLength) {
+        float[][][][] result = new float[data.length][][][];
+
+        for(int i = 0; i < data.length; i++) {
+            result[i] = maxPooling(data[i], poolingSize, dataEdgeLength , filterEdgeLength);
+        }
+
+        return result;
+    }
+
     private float[][][] maxPooling(float[][][] data, int poolingSize, int dataEdgeLength ,int filterEdgeLength) {
-        float[][][] result = new float[data.length][K][];
+        float[][][] result = new float[data.length][][];
 
         for(int i = 0; i < data.length; i++) {
             result[i] = maxPooling(data[i], poolingSize, dataEdgeLength , filterEdgeLength);
@@ -209,9 +176,9 @@ public class Trainer {
         }
 
         int rEdgeLength = pEdgeLength / poolingSize;
-        float[][] result = new float[K][rEdgeLength * rEdgeLength];
+        float[][] result = new float[K1][rEdgeLength * rEdgeLength];
 
-        for(int k = 0; k < K; k++) {
+        for(int k = 0; k < K1; k++) {
 
             for (int y = 0; y < rEdgeLength; y++) {
                 for (int x = 0; x < rEdgeLength; x++) {
@@ -235,70 +202,80 @@ public class Trainer {
 
         return result;
     }
-    
-    
-    
+
+
+
     private float[][][] normalize(float[][][] data) {
         float[][][] result = new float[data.length][][];
-        
+
         for (int i = 0; i < result.length; i++) {
-            result[i] = normalize(data[i]);        
+            result[i] = normalize(data[i]);
         }
         return result;
     }
-    
+
     private float[][] normalize(float[][] data) {
         float[][] result = new float[data.length][];
-        
+
         for (int i = 0; i < result.length; i++) {
-            result[i] = normalize(data[i]);        
+            result[i] = normalize(data[i]);
         }
         return result;
     }
-    
+
     private float[] normalize(float[] data) {
         float[] result = new float[data.length];
-        
+
         float max = Float.NEGATIVE_INFINITY;
         float min = Float.POSITIVE_INFINITY;
-        
+
         for (float f : data) {
             if(f > max) max = f;
-            if(f < min) min = f;           
+            if(f < min) min = f;
         }
-        
+
         float range = max - min;
         for (int i = 0; i < data.length; i++) {
-            result[i] = (data[i] - min)/range;   
+            result[i] = (data[i] - min)/range;
         }
         return result;
     }
 
-    private float[][] getHiddenAll(float[][] testData, CRBM[] crbms, IRBM[] irbms) {
-        float[][][] hidden1 = normalize(crbms[0].getHidden(testData, crbm1DataEdgeLength));
+    private float[][] getHiddenAll(float[][] testData, CRBM[] crbms) {
+        float[][][] hidden1 = crbms[0].getHidden(testData);
 
-        float[][][] maxPooled1 = maxPooling(hidden1, crbm1PoolingSize, crbm1DataEdgeLength, crbmFilterEdgeLength);
-        int crbm2MaxPooledDataEdgeLength = maxPoolEdgeCalc(crbm1PoolingSize, crbm1DataEdgeLength, crbmFilterEdgeLength);
-        float[][][] hidden2 = crbms[1].getHidden(maxPooled1, crbm2MaxPooledDataEdgeLength);
-        float[][][] maxPooled2 = maxPooling(hidden2, crbm2PoolingSize, crbm2MaxPooledDataEdgeLength, crbmFilterEdgeLength);
-         
-        float[][] rbmData = concatDataPartitions(maxPooled2);
-        
-        float[][] hidden = copyArray2D(rbmData);
-        
-        for (IRBM rbm : irbms) {
-            hidden = rbm.getHidden(hidden, true);
+        float[][][] hiddenMaxPooled1 = maxPooling(hidden1, crbm1PoolingSize, crbm1DataEdgeLength, crbmFilterEdgeLength);
+
+        float[][][][] hidden2 = crbms[1].getHidden(hiddenMaxPooled1);
+
+        float[][][][] hiddenMaxPooled2 = maxPooling(hidden2, crbm1PoolingSize, 5, crbmFilterEdgeLength);
+
+        float[][] perceptron = new float[hiddenMaxPooled2.length][hiddenMaxPooled2[0].length * hiddenMaxPooled2[0].length];
+
+        for(int i = 0; i < hiddenMaxPooled2.length; i++) {
+
+            for(int pos = 0, k = 0; k < hiddenMaxPooled2[0].length; k++) {
+
+                for(int kBefore = 0; kBefore < hiddenMaxPooled2[0][0].length; kBefore++, pos++) {
+
+                    perceptron[i][pos] = hiddenMaxPooled2[i][k][kBefore][0];
+
+                }
+
+            }
+
         }
-        return hidden;
+
+        return perceptron;
     }
-    
+
     private float[][] copyArray2D(float[][] arrays) {
         float[][] result = new float[arrays.length][];
-        
+
         for (int i = 0; i < arrays.length; i++) {
             result[i] = Arrays.copyOf(arrays[i], arrays[i].length);
         }
-        
+
         return result;
     }
 }

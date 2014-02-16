@@ -180,6 +180,12 @@ public class Main {
         }
     }
 
+    public static void exportAsImage(float[][][][] data, String name) {
+        for (int i = 0; i < data.length; i++) {
+            exportAsImage(data[i], name + " " + i);
+        }
+    }
+
     public static void exportAsImage(float[][][] data, String name) {
         for (int i = 0; i < data.length; i++) {
             exportAsImage(data[i], name, i);
