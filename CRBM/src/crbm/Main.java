@@ -16,7 +16,9 @@ import org.apache.commons.io.FileUtils;
 
 public class Main {
 
+    private static final boolean exportImages = false;
     private static final String exportPath = "export";
+
     private static final int edgeLength = 28;
     private static final int padding = 2;
     private static final boolean isRGB = false;
@@ -160,37 +162,46 @@ public class Main {
     public static float checkClusters(List<Cluster> clusters, DataSet[] data) {
         System.out.println("Check clusters");
         int numberOfClusters = clusters.size();
-        int rank = 0;
+        float rank = 0;
         int wrongDecision = 0;
         for (DataSet ds : data) {
             HashMap<String, Float> clusterDistances = new HashMap<String, Float>();
+
             float[] d = ds.getData();
+
             for (Cluster c : clusters) {
                 String label = c.getLabel();
                 float clusterDistance = c.distanceToCenter(d);
                 clusterDistances.put(label, clusterDistance);
             }
+
             ValueComparator valueComp = new ValueComparator(clusterDistances);
             TreeMap<String, Float> sortedDistances = new TreeMap<String, Float>(valueComp);
+
+            sortedDistances.putAll(clusterDistances);
+
             String realLabel = ds.getLabel();
-            String bestClusterLabel = sortedDistances.lastEntry().getKey();
+
+            String bestClusterLabel = sortedDistances.firstEntry().getKey();
+
             int pos = 0;
             for (String key : sortedDistances.keySet()) {
                 ++pos;
                 if(key.equals(realLabel)) break;
             }
-            rank += pos;
+
+            rank += 1.0f / (float)pos;
             if (!(bestClusterLabel.equals(realLabel))) {
                 ++wrongDecision;
                 System.out.println("Found " + bestClusterLabel + " instead of " + realLabel);
             }
         }
         
-        float meanRank = (float)(rank) / data.length;
+        float meanRank = rank / (float)data.length;
         float error = (float) wrongDecision / data.length;
         float overallCorrectRate = (float)(data.length - wrongDecision) / data.length;
         
-        System.out.println("Mean Rank: " + meanRank + " / " + data.length);
+        System.out.println("Mean Rank: " + meanRank);
         System.out.println("Wrong: " + wrongDecision + " / " + data.length + ", Error: " + error);
         System.out.println("Right: " + (data.length - wrongDecision) + " / " + data.length + ", OverallCorrectRate: " + overallCorrectRate);
 
@@ -205,9 +216,11 @@ public class Main {
             System.out.println("Cluster " + i + ": " + cluster.getLabel());
             float[] center = cluster.getCenter();
             System.out.print("Center:");
+
             for (float f : center) {
                 System.out.print(" " + f);
             }
+
             System.out.println();
             i++;
         }
@@ -240,6 +253,7 @@ public class Main {
     }
 
     public static void exportAsImage(float[] data, String name, int count, int index) {
+        if(!exportImages) return;
         new File(exportPath + "/" + name + "/").mkdirs();
 
         BufferedImage image = DataConverter.pixelDataToImage(data, 0.0f, false);
@@ -262,12 +276,13 @@ class ValueComparator implements Comparator<String> {
         this.base = base;
     }
 
-    // Note: this comparator imposes orderings that are inconsistent with equals.    
+    // Note: this comparator imposes orderings that are inconsistent with equals.
+    @Override
     public int compare(String a, String b) {
         if (base.get(a) >= base.get(b)) {
-            return -1;
-        } else {
             return 1;
+        } else {
+            return -1;
         } // returning 0 would merge keys
     }
 }

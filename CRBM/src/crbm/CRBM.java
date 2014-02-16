@@ -24,7 +24,6 @@ public class CRBM {
         this.K = K;
         this.filterEdgeLength = filterEdgeLength;
         this.dataEdgeLength = dataEdgeLength;
-        this.W = initW(K, filterEdgeLength);
     }
 
     /**
@@ -46,6 +45,23 @@ public class CRBM {
         return result;
     }
 
+    private float[][][] initW(int K, int KBefore, int filterEdgeLength) {
+        int filterDimensions = filterEdgeLength * filterEdgeLength;
+
+        // random initialization of the 3D filter kernels
+        W3D = new float[K][KBefore][filterDimensions];
+
+        for (int k = 0; k < K; k++) {
+            for(int kBefore = 0; kBefore < KBefore; kBefore++) {
+                for (int h = 0; h < filterDimensions; h++) {
+                    W3D[k][kBefore][h] = (RANDOM.nextFloat() - 0.5f) * 2;
+                }
+            }
+        }
+
+        return W3D;
+    }
+
     /**
      * Training for first crbm layer
      * with 2D training data
@@ -54,6 +70,8 @@ public class CRBM {
      * @param learningRate 
      */
     public void train(float[][] data, int epochs, float learningRate) {
+
+        this.W = initW(K, filterEdgeLength);
 
         System.out.println("Training started");
 
@@ -74,18 +92,7 @@ public class CRBM {
      */
     public void train(float[][][] data, int epochs, float learningRate) {
 
-        int filterDimensions = filterEdgeLength * filterEdgeLength;
-
-        // random initialization of the 3D filter kernels
-        W3D = new float[K][data[0].length][filterDimensions];
-
-        for (int k = 0; k < K; k++) {
-            for(int kBefore = 0; kBefore < data[0].length; kBefore++) {
-                for (int h = 0; h < filterDimensions; h++) {
-                    W3D[k][kBefore][h] = (RANDOM.nextFloat() - 0.5f) * 2;
-                }
-            }
-        }
+        this.W3D = initW(K, data[0].length, filterEdgeLength);
 
         System.out.println("Training started");
 
@@ -132,7 +139,7 @@ public class CRBM {
             }
             
             // reconstructions
-            V1m[i] = getVisible(PH0[i]);
+            V1m[i] = getVisible(H0[i]);
             V1[i] = concatenate(V0[i], V1m[i]);
 
             // negative calculations based on reconstructed data
@@ -150,8 +157,8 @@ public class CRBM {
 
             // contrastive divergence
             for (int k = 0; k < K; k++) {
-                FloatMatrix V0M = new FloatMatrix(PH0[i][k]);
-                FloatMatrix V1M = new FloatMatrix(PH1[i][k]);
+                FloatMatrix V0M = new FloatMatrix(Grad0[i][k]);
+                FloatMatrix V1M = new FloatMatrix(Grad1[i][k]);
 
                 error += (float)Math.sqrt(MatrixFunctions.pow(V0M.sub(V1M), 2.0f).sum());
             }
@@ -197,7 +204,7 @@ public class CRBM {
             }
 
             // reconstructions
-            V1m[i] = getVisible(PH0[i]);
+            V1m[i] = getVisible(H0[i]);
             V1[i] = concatenate(V0[i], V1m[i]);
 
             // negative calculations based on reconstructed data
@@ -233,7 +240,7 @@ public class CRBM {
         float[][][][] Grad0 = new float[data.length][K][][];
 
         for (int i = 0; i < data.length; i++) {
-            for (int k = 0; k < W.length; k++) {
+            for (int k = 0; k < W3D.length; k++) {
                 PH0[i][k] = convolution(data[i], W3D[k]);
                 PH0[i][k] = logistic(PH0[i][k]);
             }
@@ -298,6 +305,7 @@ public class CRBM {
             float[][] r = convolution(data[k], W1[k]);
             add(v1m, r);
         }
+        div(v1m, data.length);
         v1m = logistic(v1m);
 
         return v1m;
@@ -543,11 +551,47 @@ public class CRBM {
      * add two matrices
      * for 2D matrices
      * @param data1
+     * @param divisor
+     */
+    private void div(float[][] data1, float divisor) {
+        for (int i = 0; i < data1.length; i++) {
+            div(data1[i], divisor);
+        }
+    }
+
+    /**
+     * add two vectors
+     * @param data1
+     * @param divisor
+     */
+    private void div(float[] data1, float divisor) {
+        for (int i = 0; i < data1.length; i++) {
+            data1[i] /= divisor;
+        }
+    }
+
+    /**
+     * add two matrices
+     * for 2D matrices
+     * @param data1
      * @param data2 
      */
     private void add(float[][] data1, float[][] data2) {
         for (int i = 0; i < data1.length; i++) {
-            add(data1[i], data2[i]);
+            add(data1[i], data2);
+        }
+    }
+
+    /**
+     * add two vectors
+     * @param data1
+     * @param data2
+     */
+    private void add(float[] data1, float[][] data2) {
+        for (int i = 0; i < data1.length; i++) {
+            for (int j = 0; j < data2[0].length; j++) {
+                data1[i] += data2[i][j];
+            }
         }
     }
 
@@ -588,8 +632,8 @@ public class CRBM {
      * calculats data edge length from array length
      * data dimension is differt after convolution
      * works for square images and filters
-     * @param data
-     * @param filter
+     * @param dataEdgeLength
+     * @param filterEdgeLength
      * @return 
      */
     private int getDataEdgeLengthAfterConvolution(int dataEdgeLength, int filterEdgeLength) {

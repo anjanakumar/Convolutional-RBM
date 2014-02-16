@@ -79,28 +79,6 @@ public class DataConverter {
 
         return processPixelIntensityData(data, edgeLength, binarize, invert, minData, maxData);
     }
-	
-//	private static float[] processPixelIntensityDataConvolutional(BufferedImage image, int edgeLength, boolean binarize, boolean invert, float minData, float maxData) {
-//		float[] result = new float[(edgeLength-2)*(edgeLength-2)*9];
-//		float[] processedPixelIntensityData = processPixelIntensityData(image, edgeLength, binarize, invert, minData, maxData);
-//		
-//		int i = 0;
-//		for(int y = 1; y < edgeLength - 1; y++) {
-//			for(int x = 1; x < edgeLength - 1; x++) {
-//				for(int yk = 0; yk <= 1; yk++) {
-//					for(int xk = -1; xk <= 1; xk++) {
-//						int pos = (y + yk) * edgeLength + x + xk;
-//						
-//						result[i] = processedPixelIntensityData[pos];
-//						
-//						i++;
-//					} 
-//				} 
-//			}
-//		}
-//		//System.out.println(i);
-//		return result;
-//	}
     
 	private static float[] processPixelRGBData(BufferedImage image, int edgeLength, boolean binarize, boolean invert, float minData, float maxData) {
     	float[] data = new float[edgeLength * edgeLength * 3];
