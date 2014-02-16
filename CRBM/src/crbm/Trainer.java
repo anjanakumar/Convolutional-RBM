@@ -8,7 +8,7 @@ public class Trainer {
     // data for training
     private static final String trainingDataPath = "CRBM/Data/MNIST_1000_Train_Database";
     // data for testing the generated clusters
-    private static final String testDataPath = "CRBM/Data/MNIST_1000_Train_Database";
+    private static final String testDataPath = "CRBM/Data/MNIST_1000_Test_Database";
 
     // number of filters first CRBM
     private final int K1 = 15;
