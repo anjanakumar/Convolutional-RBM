@@ -17,7 +17,7 @@ public class Trainer {
     // learning rate for updating weights
     private final float learningRate = 0.01f;
     // number of training epochs
-    private final int epochs = 10;
+    private final int epochs = 20;
     // data input size for first CRBM
     private final int crbm1DataEdgeLength = 32;
     // filter size CRBM
