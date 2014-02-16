@@ -170,7 +170,7 @@ public class CRBM {
     }
 
     /**
-     * is calles by 2D training function
+     * is called by 2D training function
      * @param V0
      * @param learningRate
      * @return 
