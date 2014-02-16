@@ -27,4 +27,20 @@ public class ConfusionMatrix {
     public int[][] getTable() {
         return table;
     }
+    @Override
+    public String toString() {
+        String result = "";
+
+        for(int[] line : table) {
+            for(int value : line) {
+                result += value + "\t";
+            }
+            result += "\r\n";
+        }
+        return result;
+    }
+
+
+
+
 }
