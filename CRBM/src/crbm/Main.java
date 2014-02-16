@@ -5,13 +5,8 @@ import javax.imageio.ImageIO;
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
+import java.util.*;
+
 import org.apache.commons.io.FileUtils;
 
 public class Main {
@@ -162,6 +157,14 @@ public class Main {
     public static float checkClusters(List<Cluster> clusters, DataSet[] data) {
         System.out.println("Check clusters");
         int numberOfClusters = clusters.size();
+
+        // Init ConfusionMatrix
+        ArrayList<String> labels = new ArrayList<String>();
+        for (Cluster c : clusters) {
+            labels.add(c.getLabel());;
+        }
+        ConfusionMatrix confusionMatrix = new ConfusionMatrix(labels);
+
         float rank = 0;
         int wrongDecision = 0;
         for (DataSet ds : data) {
@@ -184,6 +187,8 @@ public class Main {
 
             String bestClusterLabel = sortedDistances.firstEntry().getKey();
 
+            confusionMatrix.addEntry(realLabel, bestClusterLabel);
+
             int pos = 0;
             for (String key : sortedDistances.keySet()) {
                 ++pos;
@@ -204,6 +209,9 @@ public class Main {
         System.out.println("Mean Rank: " + meanRank);
         System.out.println("Wrong: " + wrongDecision + " / " + data.length + ", Error: " + error);
         System.out.println("Right: " + (data.length - wrongDecision) + " / " + data.length + ", OverallCorrectRate: " + overallCorrectRate);
+
+        System.out.println("Confusion Matrix: " + meanRank);
+        System.out.println(confusionMatrix.toString());
 
         return error;
     }
