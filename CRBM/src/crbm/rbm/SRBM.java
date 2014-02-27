@@ -26,7 +26,7 @@ public class SRBM implements IRBM{
     public SRBM(int input, float learnRate, int desiredOutput, ILogistic logisticFunction) {
         this.learnRate = learnRate;
         this.desiredOutput = desiredOutput;
-        this.weights = FloatMatrix.randn(input, input).mmul(0.1f).add(FloatMatrix.eye(input).mul(4));
+        this.weights = FloatMatrix.rand(input,input).mul(0.01f);
         this.logisticFunction = logisticFunction;
     }
 
@@ -35,6 +35,7 @@ public class SRBM implements IRBM{
         final FloatMatrix trainingData = new FloatMatrix(data);
         final FloatMatrix trainingDataTranspose = trainingData.transpose();
         final ForkBlas forkBlas = new ForkBlas();
+        float lastError = 1.0f;
         while(stop.isNotDone()) {
 
             FloatMatrix hidden = new FloatMatrix(trainingData.getRows(), weights.getColumns());
@@ -57,17 +58,22 @@ public class SRBM implements IRBM{
             weights.addi((positiveA.sub(negativeA)).div(trainingData.getRows()).mul(this.learnRate));
 
             error = (float)Math.sqrt(MatrixFunctions.pow(trainingData.sub(visible), 2.0f).sum() / trainingData.length / weights.getRows());
-            if(error < 0.01f * Math.sqrt(weights.getColumns()/ (float) weights.getRows()) && weights.getColumns() > desiredOutput) {
+
+            if(error < 0.01f * Math.cbrt(weights.getColumns()/ (float) weights.getRows()) && weights.getColumns() > desiredOutput) {
                 weights = shrink(weights);
+                lastError = 1.0f;
                 stop.setCurrentEpochs(0);
             }
             stop.update(error);
 
-            System.out.println("Epochs Remaining: " + stop.epochsRemaining());
+
+            System.out.println("Remaining: " + (lastError - error));
             System.out.println("Error: " + error);
             System.out.println("rows: "  + weights.getRows() + "  cols: " + weights.getColumns());
 
             System.out.println();
+            lastError = lastError * 0.99f + 0.01f * error;
+            if(lastError - error < 1e-5f) break;
         }
 
     }
@@ -89,7 +95,7 @@ public class SRBM implements IRBM{
             }
         }
         for(int i = 0; i < result.getColumns(); i++) {
-            result.put(minDistanceIndex, i, (float)RANDOM.nextGaussian());
+            result.put(minDistanceIndex, i, 0.01f * (float)RANDOM.nextGaussian());
         }
         return result;
     }

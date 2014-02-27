@@ -27,7 +27,7 @@ public class SRBMTest {
     private static final float maxData = 1.0f;
 
     // data for training
-    private static final String trainingDataPath = "CRBM/Data/MNIST_5";
+    private static final String trainingDataPath = "CRBM/Data/MNIST_1000_Train_Database"; // "CRBM/Data/MNIST_5";
     // data for testing the generated clusters
     private static final String testDataPath = "CRBM/Data/MNIST_1000_Test_Database";
 
@@ -37,7 +37,7 @@ public class SRBMTest {
         float[][] trainingData = dataSetToArray(trainingDataSet);
 
         SRBM srbm = new SRBM(edgeLength * edgeLength, 0.01f, 10, new DefaultLogisticMatrixFunction());
-        srbm.train(trainingData, new StoppingCondition(5000),false, false);
+        srbm.train(trainingData, new StoppingCondition(0.0f),false, false);
 
         float[][] hidden = srbm.getHidden(trainingData, false);
         float[][] visible = srbm.getVisible(hidden, false);
