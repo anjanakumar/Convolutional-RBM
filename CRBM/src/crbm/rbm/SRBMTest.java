@@ -27,7 +27,7 @@ public class SRBMTest {
     private static final float maxData = 1.0f;
 
     // data for training
-    private static final String trainingDataPath = "CRBM/Data/MNIST_1000_Train_Database"; // "CRBM/Data/MNIST_5";
+    private static final String trainingDataPath = "CRBM/Data/MNIST_2" ; //"CRBM/Data/MNIST_1000_Train_Database";
     // data for testing the generated clusters
     private static final String testDataPath = "CRBM/Data/MNIST_1000_Test_Database";
 
@@ -36,14 +36,16 @@ public class SRBMTest {
         DataSet[] trainingDataSet = loadData(trainingDataPath);
         float[][] trainingData = dataSetToArray(trainingDataSet);
 
-        SRBM srbm = new SRBM(edgeLength * edgeLength, 0.01f, 10, new DefaultLogisticMatrixFunction());
-        srbm.train(trainingData, new StoppingCondition(0.0f),false, false);
+         SRBM rbm = new SRBM(edgeLength * edgeLength, 0.01f, 10, new DefaultLogisticMatrixFunction());
+        rbm.train(trainingData, new StoppingCondition(0.0f),false, false);
 
-        float[][] hidden = srbm.getHidden(trainingData, false);
-        float[][] visible = srbm.getVisible(hidden, false);
+//        RBMJBlasOpti rbm = new RBMJBlasOpti(edgeLength * edgeLength, 94, 0.01f, new DefaultLogisticMatrixFunction(), false, 0, null);
+//        rbm.train(trainingData, new StoppingCondition(30000),false, false);
+        float[][] hidden = rbm.getHidden(trainingData, false);
+        float[][] visible = rbm.getVisible(hidden, false);
 
-        float[][] features = FloatMatrix.eye(srbm.getWeights()[0].length).toArray2();
-        float[][] featurePics = srbm.getVisible(features, false);
+        float[][] features = FloatMatrix.eye(rbm.getWeights()[0].length).toArray2();
+        float[][] featurePics = rbm.getVisible(features, false);
 
         exportAsImage(trainingData, "original", 0);
         exportAsImage(visible, "recon", 0);

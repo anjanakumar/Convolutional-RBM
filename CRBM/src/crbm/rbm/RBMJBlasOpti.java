@@ -154,8 +154,9 @@ public class RBMJBlasOpti implements IRBM {
             error = (float)Math.sqrt(MatrixFunctions.pow(dataWithBias.sub(visible), 2.0f).sum() / trainingData.length / localWeights.getRows());
 
             stop.update(error);
+
+            System.out.println(error);
         }
-        System.out.println(error);
     }
 
     @Override
